@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import netifaces
 import sys
 import tg
 
@@ -15,15 +14,17 @@ def parse_arguments():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--debug", action="store_true", default=False, help="debug output")
+	parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
 
 	tg.generator.base.BaseGenerator.parse_arguments(parser)
 
 	parser_command = parser.add_subparsers(dest="command")
-	for cls in tg.generator.modreg.registered_classes:
+	for cls in tg.modreg.registered_classes:
 		cls.parse_arguments(parser_command)
 
 
 	return parser.parse_args()
+
 
 
 def main():
@@ -32,30 +33,19 @@ def main():
 	args = parse_arguments()
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
-	logger.debug(args)
+	#logger.debug("starup args: %s", args)
 
 
 	# setup
-	fields = args.__dict__
+	generator = getattr(tg, args.command)(args.__dict__)
+	generator.process_fields()
+	logger.debug("generator fields: %s", generator.fields)
 
+	if args.dump:
+		print generator.generate_config()
+	else:
+		generator.execute()
 
-	# default output interface is one with default gateway
-	# TODO: IPv6
-	if not fields["dev"]:
-		fields["dev"] = netifaces.gateways()["default"][netifaces.AF_INET][1]
-	fields["eth_source_mac"] = netifaces.ifaddresses(fields["dev"])[netifaces.AF_LINK][0]["addr"]
-	router_address = netifaces.gateways()["default"][netifaces.AF_INET][1]
-	fields["eth_destination_mac"] 
-
-
-	logger.debug(fields)
-
-
-
-
-	# execute
-	generator = getattr(tg, args.command)(fields)
-	logger.debug(generator.generate_config())
 
 	
 	# cleanup
