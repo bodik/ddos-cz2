@@ -1,4 +1,5 @@
 #!/usr/bin/python
+"""tg python trafgen wrapper"""
 
 import argparse
 import logging
@@ -13,30 +14,26 @@ def parse_arguments():
 	"""parse arguments"""
 
 	parser = argparse.ArgumentParser()
+	parser_command = parser.add_subparsers(dest="generator", help="generator name")
 
-	parser_commands = parser.add_subparsers(dest="command")
 	for cls in tg.modreg.registered_classes:
-		parser_command = parser_commands.add_parser(cls.__name__)
-		cls.parse_arguments(parser_command)
+		cls.build_arguments_parser(parser_command.add_parser(cls.__name__))
 
 	return parser.parse_args()
 
 
 
 def main():
-	
-	# parse cmdline
+	"""main"""
 	args = parse_arguments()
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 
-
-	# setup
-	generator = getattr(tg, args.command)(args.__dict__)
+	generator = getattr(tg, args.generator)(args.__dict__)
 	logger.debug("generator fields: %s", generator.fields)
 
 	if args.dump:
-		print generator.config()
+		print generator.compile()
 	else:
 		generator.execute()
 

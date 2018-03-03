@@ -1,4 +1,6 @@
 #!/usr/bin/python
+"""generators implementation"""
+
 
 import logging
 import os
@@ -13,6 +15,9 @@ import tg
 class Base(object):
 	"""base generator, holds code to execute the generator"""
 
+	LAYERS = []
+	TEMPLATE = ""
+
 	PACKET_WRAPPER = """
 #include "trafgen_stddef.h"
 {{{{
@@ -21,54 +26,68 @@ class Base(object):
 """
 
 	@classmethod
-	def parse_arguments(cls, parser):
-		"""parse arguments and add all layers parsers"""
+	def build_arguments_parser(cls, parser):
+		"""parse common arguments, add all layers parsers, impl specific arguments"""
 
-		# generator common parameters
 		parser.add_argument("--debug", action="store_true", default=False, help="debug output")
 		parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
 		parser.add_argument("--num", default=100, help="number of packets to send")
 		parser.add_argument("--gap", default=0,	help="interpacket gap")
 
-		# incorporate all arguments from generator's impl layers
-		for layer in [x for x in cls.LAYERS if type(x) == type]:
+		for layer in [x for x in cls.LAYERS if isinstance(x, type)]:
 			layer.parse_arguments(parser)
+
+		cls.parse_arguments(parser)
+
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments abstract placeholder"""
+		pass
+
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process fields abstract placeholder"""
+		return fields
 
 
 
 	def __init__(self, fields):
-		"""initialize all fields, postprocess them, run all layers postprocessors"""
+		"""initialize fields, run all layers postprocessors, impl specific postprocessing"""
 
-		# generator common fields
 		self.fields = fields
-
-		# postprocess fields by all generator's impl layers
-		for layer in [x for x in self.LAYERS if type(x) == type]:
-			self.fields = layer.process_fields(fields)
-
+		for layer in [x for x in self.LAYERS if isinstance(x, type)]:
+			self.fields = layer.process_fields(self.fields)
+		self.fields = self.__class__.process_fields(self.fields)
 
 
-	def config(self):
+
+	def compile(self):
 		"""compile source for config"""
 
 		# compile source for config from all layers
-		source = ""
+		template = ""
 		for layer in self.LAYERS:
-			if type(layer) == type:
-				source += layer.CONFIG
+			if isinstance(layer, type):
+				template += layer.TEMPLATE
 			else:
-				source += layer
+				template += layer
 
 		# wrap and fill fields
-		return tg.generator.Base.PACKET_WRAPPER.format(packet=source).format(**self.fields)
+		return tg.generator.Base.PACKET_WRAPPER.format(packet=template).format(**self.fields)
 
 
 
 	def execute(self):
+		"""run trafgen"""
+
 		# write config to filesystem
 		ftmp = tempfile.NamedTemporaryFile(prefix="tg_generator_", delete=False)
 		ftmp_name = ftmp.name
-		ftmp.write(self.config())
+		ftmp.write(self.compile())
 		ftmp.close()
 
 		# run trafgen
@@ -94,22 +113,20 @@ class Base(object):
 class UdpRandomPayload(Base):
 	"""generator impl - udp random payload"""
 
-	CONFIG = """
+	TEMPLATE = """
 /* payload */				drnd({length}),
 """
-	LAYERS = [tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Udp, CONFIG]
+	LAYERS = [tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Udp, TEMPLATE]
 
-	@classmethod
-	def parse_arguments(cls, parser):
-		super(cls, cls).parse_arguments(parser)
+	@staticmethod
+	def parse_arguments(parser):
 		parser.add_argument("--length", default=666, help="payload length; eg. 123")
 
 
-
-	def __init__(self, fields):
-		super(self.__class__, self).__init__(fields)
-
-		self.fields["eth_protocol"] = "0x800"
-		self.fields["ip_protocol"] = "17"
-		self.fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + self.fields["length"]
-		self.fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + self.fields["udp_total_length"]
+	@staticmethod
+	def process_fields(fields):
+		fields["eth_protocol"] = "0x800"
+		fields["ip_protocol"] = "17"
+		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]
+		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + fields["udp_total_length"]
+		return fields

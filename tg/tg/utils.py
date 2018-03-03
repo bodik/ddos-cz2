@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """tg utils module"""
 
 import pyroute2
@@ -38,7 +39,7 @@ def interface_ip(iface_name, family=socket.AF_INET):
 
 def interface_gateway_ip(iface_name, family=socket.AF_INET):
 	"""returns gateway address for interface"""
-	
+
 	ipr = pyroute2.IPRoute()
 	iface_index = ipr.link_lookup(ifname=iface_name)[0]
 	for route in ipr.get_routes(family=family):
@@ -47,13 +48,13 @@ def interface_gateway_ip(iface_name, family=socket.AF_INET):
 
 
 
-def arping(ip, iface_name):
+def arping(ipaddr, iface_name):
 	"""generates arp request on interface for ip address"""
 
 	source_mac = interface_mac(iface_name).replace(":", "").decode("hex")
 	source_address = interface_ip(iface_name)
 	destination_mac = "\xff\xff\xff\xff\xff\xff"
-	destination_address = ip
+	destination_address = ipaddr
 
 	# eth = dmac, smac, eth_type_protocol
 	# arp = hardware type, protocol type, hardware address length, protocol address length, operation,
@@ -70,16 +71,16 @@ def arping(ip, iface_name):
 
 
 
-def ip_to_mac(ip, iface_name):
+def ip_to_mac(ipaddr, iface_name):
 	"""resolves link addres from address"""
 
 	# TODO: ipv6 support
 	# ensure record in cache
-	arping(ip, iface_name)
+	arping(ipaddr, iface_name)
 
 	# get record from cache
 	ipr = pyroute2.IPRoute()
-	neigh = ipr.get_neighbours(dst=ip)[0]
+	neigh = ipr.get_neighbours(dst=ipaddr)[0]
 	if neigh:
 		return neigh.get_attr("NDA_LLADDR")
 
@@ -88,10 +89,11 @@ def ip_to_mac(ip, iface_name):
 
 
 def trafgen_format_mac(mac):
+	"""format mac address to trafgen bytes"""
 	return ",".join(["0x%s" % x for x in mac.split(":")])
 
 
 
-def trafgen_format_ip(ip):
-	return ip.replace(".", ",")
-
+def trafgen_format_ip(ipaddr):
+	"""format ip address to trafgen bytes"""
+	return ipaddr.replace(".", ",")

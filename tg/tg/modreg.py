@@ -5,6 +5,8 @@
 registered_classes = []
 
 def register(cls):
+	"""register decoraded class"""
+
 	if cls not in registered_classes:
 		registered_classes.append(cls)
 	return cls
