@@ -1,6 +1,9 @@
+#!/usr/bin/python
 """generator modules registry helper"""
 #14:34 < pharook> import module_registry
 #14:34 < pharook> @module_helper.register
+
+
 
 registered_classes = []
 

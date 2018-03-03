@@ -10,6 +10,7 @@ logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
 
 
+
 def parse_arguments():
 	"""parse arguments"""
 
@@ -17,7 +18,7 @@ def parse_arguments():
 	parser_command = parser.add_subparsers(dest="generator", help="generator name")
 
 	for cls in tg.modreg.registered_classes:
-		cls.build_arguments_parser(parser_command.add_parser(cls.__name__))
+		tg.runner.Runner.build_arguments_parser(parser_command.add_parser(cls.__name__), cls)
 
 	return parser.parse_args()
 
@@ -29,13 +30,13 @@ def main():
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 
-	generator = getattr(tg, args.generator)(args.__dict__)
-	logger.debug("generator fields: %s", generator.fields)
+	runner = tg.runner.Runner(getattr(tg, args.generator), args.__dict__)
+	logger.debug("generator fields: %s", runner.fields)
 
 	if args.dump:
-		print generator.compile()
+		print runner.compile()
 	else:
-		generator.execute()
+		runner.execute()
 
 
 
