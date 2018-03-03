@@ -18,8 +18,8 @@ class Base(object):
 	LAYERS = []
 	TEMPLATE = ""
 
-	PACKET_WRAPPER = """
-#include "trafgen_stddef.h"
+	WRAPPER = """
+#include "{tg_path}/bin/trafgen_stddef.h"
 {{{{
 {packet}
 }}}}
@@ -66,7 +66,7 @@ class Base(object):
 
 
 	def compile(self):
-		"""compile source for config"""
+		"""compile source for trafgen"""
 
 		# compile source for config from all layers
 		template = ""
@@ -77,7 +77,10 @@ class Base(object):
 				template += layer
 
 		# wrap and fill fields
-		return tg.generator.Base.PACKET_WRAPPER.format(packet=template).format(**self.fields)
+		wrapped = tg.generator.Base.WRAPPER.format( \
+			tg_path=os.path.dirname(os.path.realpath(sys.argv[0])),
+			packet=template)
+		return wrapped.format(**self.fields)
 
 
 
@@ -95,7 +98,7 @@ class Base(object):
 		cmd = [trafgen_bin, "--in", ftmp_name, "--out", self.fields["dev"], "--num", str(self.fields["num"]), "--gap", str(self.fields["gap"]), "--cpp"]
 		logging.debug(cmd)
 		try:
-			subprocess.check_call(cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+			logging.debug(subprocess.check_output(cmd))
 		except Exception as e:
 			logging.error(e)
 			return
