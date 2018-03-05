@@ -83,7 +83,7 @@ class Runner(object):
 		"""run trafgen"""
 
 		# write config to filesystem
-		ftmp = tempfile.NamedTemporaryFile(prefix="tg_generator_", delete=False)
+		ftmp = tempfile.NamedTemporaryFile(prefix="tg2_generator_", delete=False)
 		ftmp_name = ftmp.name
 		ftmp.write(self.compile())
 		ftmp.close()
@@ -96,14 +96,14 @@ class Runner(object):
 
 		logging.debug(cmd)
 		if self.fields["time"]:
-			tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
+			ret = tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
 		else:
-			tg.runner.TimedExecutor().execute_once(cmd)
-
+			ret = tg.runner.TimedExecutor().execute_once(cmd)
 
 		# cleanup
-		os.unlink(ftmp_name)
-
+		if ret == 0:
+			logging.debug("cleaning up")
+			os.unlink(ftmp_name)
 
 
 
@@ -125,8 +125,15 @@ class TimedExecutor(object):
 				logging.debug(process_stdout.strip())
 			if process_stderr:
 				logging.error(process_stderr.strip())
-		except KeyboardInterrupt:
+			if self.process.returncode != 0:
+				logging.error("exit code %s", self.process.returncode)
+		except (Exception, KeyboardInterrupt) as e:
 			self.terminate_process()
+			if self.process.returncode != 0:
+				logging.error("exit code %s", self.process.returncode)
+			raise e
+
+		return self.process.returncode
 
 
 	def execute(self, cmd, seconds):
@@ -149,11 +156,14 @@ class TimedExecutor(object):
 		self.timer_terminate = True
 		self.timer.join()
 
+		return self.process.returncode
+
 
 	def terminate_process(self):
 		self.process.poll()
 		if self.process.returncode is None:
 			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+			self.process.wait()
 
 
 	def timer_thread(self, seconds):

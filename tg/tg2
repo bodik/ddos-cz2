@@ -36,7 +36,10 @@ def main():
 	if args.dump:
 		print runner.compile()
 	else:
-		runner.run()
+		try:
+			runner.run()
+		except KeyboardInterrupt:
+			logger.info("aborted by user")
 
 
 

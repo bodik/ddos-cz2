@@ -106,8 +106,8 @@ class Udp(object):
 
 	HEADER_LENGTH = 8
 	TEMPLATE = """
-/* udp source port */			{source_port},
-/* udp destination port */		{destination_port},
+/* udp source port */			{udp_source_port},
+/* udp destination port */		{udp_destination_port},
 /* udp total length */			const16({udp_total_length}),
 /* udp checksum */			const16(0),
 """
@@ -117,8 +117,8 @@ class Udp(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
-		parser.add_argument("--source_port", default=12345, help="eg. 123|rnd|drnd")
-		parser.add_argument("--destination_port", default=12345, help="eg. 123|rnd|drnd")
+		parser.add_argument("--udp_source_port", default=12345, help="eg. 123|rnd|drnd")
+		parser.add_argument("--udp_destination_port", default=12345, help="eg. 123|rnd|drnd")
 
 
 	@staticmethod
@@ -134,6 +134,6 @@ class Udp(object):
 				fields[selector] = "c16(%d)" % int(fields[selector])
 			return fields
 
-		fields = process_port(fields, "source_port")
-		fields = process_port(fields, "destination_port")
+		fields = process_port(fields, "udp_source_port")
+		fields = process_port(fields, "udp_destination_port")
 		return fields
