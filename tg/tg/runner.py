@@ -3,10 +3,13 @@
 
 import logging
 import os
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import tg
+import time
 
 
 
@@ -24,11 +27,18 @@ class Runner(object):
 	def build_arguments_parser(parser, generator):
 		"""parse common arguments, add all layers parsers, generator specific arguments"""
 
+		# generic arguments
 		parser.add_argument("--debug", action="store_true", default=False, help="debug output")
 		parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
-		parser.add_argument("--num", default=100, help="number of packets to send")
-		parser.add_argument("--gap", default=0,	help="interpacket gap")
 
+		# timings
+		parser.add_argument("--time", default=7, help="generate packets for specified time; eg. 2m3s")
+		parser.add_argument("--num", help="number of packets to send")
+		group_timing = parser.add_mutually_exclusive_group()
+		group_timing.add_argument("--gap", help="interpacket gap")
+		group_timing.add_argument("--rate", help="send rate")
+
+		# generator specific
 		for layer in [x for x in generator.LAYERS if isinstance(x, type)]:
 			layer.parse_arguments(parser)
 		generator.parse_arguments(parser)
@@ -40,6 +50,10 @@ class Runner(object):
 
 		self.generator = generator
 		self.fields = fields
+
+		if self.fields["time"]:
+			self.fields["time"] = tg.utils.parse_time(str(self.fields["time"]))
+
 		for layer in [x for x in self.generator.LAYERS if isinstance(x, type)]:
 			self.fields = layer.process_fields(self.fields)
 		self.fields = self.generator.process_fields(self.fields)
@@ -65,7 +79,7 @@ class Runner(object):
 
 
 
-	def execute(self):
+	def run(self):
 		"""run trafgen"""
 
 		# write config to filesystem
@@ -76,13 +90,68 @@ class Runner(object):
 
 		# run trafgen
 		trafgen_bin = "%s/bin/trafgen" % os.path.dirname(os.path.realpath(sys.argv[0]))
-		cmd = [trafgen_bin, "--in", ftmp_name, "--out", self.fields["dev"], "--num", str(self.fields["num"]), "--gap", str(self.fields["gap"]), "--cpp"]
+		cmd = [trafgen_bin, "--in", ftmp_name, "--out", self.fields["dev"], "--cpp"]
+		for arg in [x for x in ["num", "gap", "rate"] if self.fields[x]]:
+			cmd += ["--%s" % arg, str(self.fields[arg])]
+
 		logging.debug(cmd)
-		try:
-			logging.debug(subprocess.check_output(cmd))
-		except Exception as e:
-			logging.error(e)
-			return
+		tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
 
 		# cleanup
 		os.unlink(ftmp_name)
+
+
+
+
+class TimedExecutor(object):
+	"""timed executor, repeat execution/terminate process for/after specified time"""
+
+	def __init__(self):
+		self.process = None
+		self.timer = None
+		self.timer_finished = None # signal from timer
+		self.timer_terminate = None # signal to timer
+
+
+	def execute(self, cmd, seconds):
+		"""setup timer and execute until timer finishes"""
+
+		if seconds < 1:
+			raise ValueError("timer too low")
+		self.process = None
+		self.timer = threading.Thread(name="TimedExecutorTimer", target=self.timer_thread, args=(seconds,))
+		self.timer.setDaemon(True)
+		self.timer_finished = False
+		self.timer_terminate = False
+		self.timer.start()
+
+		while not self.timer_finished:
+			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
+			(process_stdout, process_stderr) = self.process.communicate()
+			if process_stdout:
+				logging.debug(process_stdout.strip())
+			if process_stderr:
+				logging.error(process_stderr.strip())
+
+			if self.process.returncode != 0:
+				break
+
+		self.timer_terminate = True
+		self.timer.join()
+
+
+	def timer_thread(self, seconds):
+		"""actively wait for timeout and end running process"""
+
+		logging.debug("%s begin", self.__class__.__name__)
+		while seconds > 0:
+			time.sleep(1)
+			seconds -= 1
+			if self.timer_terminate:
+				break
+		self.timer_finished = True
+		logging.debug("%s end", self.__class__.__name__)
+
+		self.process.poll()
+		if self.process.returncode is None:
+			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)

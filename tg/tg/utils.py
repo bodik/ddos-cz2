@@ -1,7 +1,9 @@
 #!/usr/bin/python
 """tg utils module"""
 
+import datetime
 import pyroute2
+import re
 import struct
 import socket
 
@@ -97,3 +99,19 @@ def trafgen_format_mac(mac):
 def trafgen_format_ip(ipaddr):
 	"""format ip address to trafgen bytes"""
 	return ipaddr.replace(".", ",")
+
+
+
+def parse_time(data):
+	"""parse time spec 1h2m3s to total seconds"""
+
+	regex = re.compile(r"^((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s?)?$")
+	parts = regex.match(data)
+	if not parts:
+		raise ValueError("invalid time")
+	parts = parts.groupdict()
+	time_params = {}
+	for (name, param) in parts.iteritems():
+		if param:
+			time_params[name] = int(param)
+	return datetime.timedelta(**time_params).total_seconds()

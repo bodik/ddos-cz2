@@ -36,7 +36,7 @@ def main():
 	if args.dump:
 		print runner.compile()
 	else:
-		runner.execute()
+		runner.run()
 
 
 
