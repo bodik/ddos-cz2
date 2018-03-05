@@ -26,6 +26,9 @@ class UdpRandomPayload(object):
 	def process_fields(fields):
 		"""process arguments to fileds"""
 
+		if fields["length"]:
+			fields["length"] = int(fields["length"])
+
 		fields["eth_protocol"] = "0x800"
 		fields["ip_protocol"] = "17"
 		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]

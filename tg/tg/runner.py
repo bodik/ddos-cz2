@@ -32,7 +32,7 @@ class Runner(object):
 		parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
 
 		# timings
-		parser.add_argument("--time", default=7, help="generate packets for specified time; eg. 2m3s")
+		parser.add_argument("--time", help="generate packets for specified time; eg. 2m3s")
 		parser.add_argument("--num", help="number of packets to send")
 		group_timing = parser.add_mutually_exclusive_group()
 		group_timing.add_argument("--gap", help="interpacket gap")
@@ -95,7 +95,11 @@ class Runner(object):
 			cmd += ["--%s" % arg, str(self.fields[arg])]
 
 		logging.debug(cmd)
-		tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
+		if self.fields["time"]:
+			tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
+		else:
+			tg.runner.TimedExecutor().execute_once(cmd)
+
 
 		# cleanup
 		os.unlink(ftmp_name)
@@ -113,6 +117,18 @@ class TimedExecutor(object):
 		self.timer_terminate = None # signal to timer
 
 
+	def execute_once(self, cmd):
+		try:
+			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
+			(process_stdout, process_stderr) = self.process.communicate()
+			if process_stdout:
+				logging.debug(process_stdout.strip())
+			if process_stderr:
+				logging.error(process_stderr.strip())
+		except KeyboardInterrupt:
+			self.terminate_process()
+
+
 	def execute(self, cmd, seconds):
 		"""setup timer and execute until timer finishes"""
 
@@ -126,18 +142,18 @@ class TimedExecutor(object):
 		self.timer.start()
 
 		while not self.timer_finished:
-			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
-			(process_stdout, process_stderr) = self.process.communicate()
-			if process_stdout:
-				logging.debug(process_stdout.strip())
-			if process_stderr:
-				logging.error(process_stderr.strip())
-
+			self.execute_once(cmd)
 			if self.process.returncode != 0:
 				break
 
 		self.timer_terminate = True
 		self.timer.join()
+
+
+	def terminate_process(self):
+		self.process.poll()
+		if self.process.returncode is None:
+			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
 
 
 	def timer_thread(self, seconds):
@@ -152,6 +168,4 @@ class TimedExecutor(object):
 		self.timer_finished = True
 		logging.debug("%s end", self.__class__.__name__)
 
-		self.process.poll()
-		if self.process.returncode is None:
-			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+		self.terminate_process()
