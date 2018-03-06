@@ -13,7 +13,7 @@ PAYLOAD_LENGTH=$(random_byte)
 
 
 
-run_and_display UdpRandomPayload \
+run_one_and_display UdpRandomPayload \
 	--ip_ttl ${IP_TTL} \
 	--ip_source_address ${IP_SOURCE} \
 	--ip_destination_address ${IP_DESTINATION} \

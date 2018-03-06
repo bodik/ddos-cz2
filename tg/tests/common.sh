@@ -44,8 +44,12 @@ run_and_display() {
 	TESTID_ETH_DESTINATION_MAC="$(random_mac)"
 
 	echo "INFO: test for ${GENERATOR} ${TESTID_FILE} ${TESTID_FILE_DISPLAYED}"
-	${BASEDIR}/tg2 ${GENERATOR} --dev ${TESTID_FILE} --eth_source_mac ${TESTID_ETH_SOURCE_MAC} --eth_destination_mac ${TESTID_ETH_DESTINATION_MAC} --num 1 $@ --debug || rreturn $? "$0 tg2"
+	${BASEDIR}/tg2 ${GENERATOR} --dev ${TESTID_FILE} --eth_source_mac ${TESTID_ETH_SOURCE_MAC} --eth_destination_mac ${TESTID_ETH_DESTINATION_MAC} $@ --debug || rreturn $? "$0 tg2"
 	${BASEDIR}/bin/scapy_display.py ${TESTID_FILE} > ${TESTID_FILE_DISPLAYED} || rreturn $? "$0 scapy_display.py"
+}
+
+run_one_and_display() {
+	run_and_display $@ --num 1
 }
 
 

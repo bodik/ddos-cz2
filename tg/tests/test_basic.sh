@@ -16,8 +16,8 @@ check_value "scapy_display.summary.count: ${NUMBER}"
 
 
 # test send number of packets for time at specified rate
-NUMBER=3
-run_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD} --time ${NUMBER} --num ${NUMBER} --rate 1pps
+NUMBER=4
+run_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD} --time ${NUMBER} --rate 1pps
 check_value "scapy_display.summary.count: ${NUMBER}"
 
 

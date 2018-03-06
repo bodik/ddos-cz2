@@ -9,7 +9,7 @@ echo "0,0,0,0,0,0,0,0,0,0" > $TESTPAYLOAD
 
 
 
-run_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD}
+run_one_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD}
 cat ${TESTID_FILE_DISPLAYED}
 
 
