@@ -41,6 +41,9 @@ def main():
 		except KeyboardInterrupt:
 			logger.info("aborted by user")
 
+	#TODO: return with runner retval
+	#TODO: https://github.com/netsniff-ng/netsniff-ng/issues/188
+
 
 
 if __name__ == "__main__":

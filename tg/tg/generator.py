@@ -4,6 +4,31 @@
 import tg
 
 
+#====================================================================
+@tg.modreg.register
+class EthernetFilePayload(object):
+	"""generator impl - udp random payload"""
+
+	TEMPLATE = """
+/* payload */				{payload}
+"""
+	LAYERS = [tg.layer.Ethernet, TEMPLATE]
+	
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+	
+		parser.add_argument("--eth_protocol", required=True ,help="eg. 0x0800")
+		parser.add_argument("--filename", required=True, help="full payload filename")
+
+
+	@staticmethod
+	def process_fields(fields):
+		with open(fields["filename"], "r") as ftmp:
+			fields["payload"] = ftmp.read()
+		return fields
+	
+
 
 #====================================================================
 @tg.modreg.register

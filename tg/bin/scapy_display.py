@@ -8,6 +8,8 @@ import sys
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
 
+
+
 def expand(x):
 	yield x
 	while x.payload:
@@ -16,20 +18,33 @@ def expand(x):
 
 
 
-def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument("inputfile", help="filename")
-	args = parser.parse_args()
-
-	for packet in rdpcap(args.inputfile):
+def display(packets):
+	for packet in packets:
 		for layer in list(expand(Ether(packet.load))):
 			for field in layer.fields:
 				if layer.name == "Raw":
 					layer.display()
 				else:
 					print "%s.%s: %s" % (layer.name, field, layer.fields[field])
-
 	return 0
+
+
+
+def summary(packets):
+	print "scapy_display.summary.count: %d" % len(packets)
+	return 0
+
+
+
+def main():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("inputfile", help="filename")
+	args = parser.parse_args()
+
+	packets = rdpcap(args.inputfile)
+	display(packets)
+	summary(packets)
+
 
 if __name__ == "__main__":
 	sys.exit(main())

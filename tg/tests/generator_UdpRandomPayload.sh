@@ -11,6 +11,8 @@ UDP_SOURCE=$(random_int)
 UDP_DESTINATION=$(random_int)
 PAYLOAD_LENGTH=$(random_byte)
 
+
+
 run_and_display UdpRandomPayload \
 	--ip_ttl ${IP_TTL} \
 	--ip_source_address ${IP_SOURCE} \
@@ -18,6 +20,8 @@ run_and_display UdpRandomPayload \
 	--udp_source_port ${UDP_SOURCE} \
 	--udp_destination_port ${UDP_DESTINATION} \
 	--length ${PAYLOAD_LENGTH}
+
+
 
 check_value "IP.len: $((20+8+${PAYLOAD_LENGTH}))"
 check_value "IP.ttl: ${IP_TTL}"
@@ -28,6 +32,8 @@ check_value "IP.dst: ${IP_DESTINATION}"
 check_value "UDP.sport: ${UDP_SOURCE}"
 check_value "UDP.dport: ${UDP_DESTINATION}"
 check_value "UDP.len: $((8+${PAYLOAD_LENGTH}))"
+
+
 
 cleanup
 rreturn 0 "$0"
