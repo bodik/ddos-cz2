@@ -95,15 +95,21 @@ class Runner(object):
 			cmd += ["--%s" % arg, str(self.fields[arg])]
 
 		logging.debug(cmd)
-		if self.fields["time"]:
-			ret = tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
-		else:
-			ret = tg.runner.TimedExecutor().execute_once(cmd)
+		try:
+			if self.fields["time"]:
+				ret = tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
+			else:
+				ret = tg.runner.TimedExecutor().execute_once(cmd)
+		except KeyboardInterrupt:
+			logging.info("aborted by user")
+			ret = 0
 
 		# cleanup
 		if ret == 0:
 			logging.debug("cleaning up")
 			os.unlink(ftmp_name)
+
+		return ret
 
 
 

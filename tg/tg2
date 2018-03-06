@@ -35,14 +35,11 @@ def main():
 
 	if args.dump:
 		print runner.compile()
+		ret = 0
 	else:
-		try:
-			runner.run()
-		except KeyboardInterrupt:
-			logger.info("aborted by user")
+		ret = runner.run()
 
-	#TODO: return with runner retval
-	#TODO: https://github.com/netsniff-ng/netsniff-ng/issues/188
+	return ret
 
 
 
