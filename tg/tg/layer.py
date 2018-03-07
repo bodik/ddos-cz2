@@ -20,7 +20,6 @@ class Ethernet(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
-		parser.add_argument("--dev", help="output iface; defaults to iface with default gw; eg. eth0")
 		parser.add_argument("--eth_source_mac", help="eg. aa:bb:cc:dd:ee:ff")
 		parser.add_argument("--eth_destination_mac", help="eg. aa:bb:cc:dd:ee:ff")
 
@@ -28,12 +27,8 @@ class Ethernet(object):
 	@staticmethod
 	def process_fields(fields):
 		"""process input parameters to fields
-		dev defaults to interface with route
 		source_mac defaults to corresponding addr
 		destination_mac defaults to resolved gateway addr"""
-
-		if not fields["dev"]:
-			fields["dev"] = tg.utils.default_output_interface()
 
 		if not fields["eth_source_mac"]:
 			fields["eth_source_mac"] = tg.utils.interface_mac(fields["dev"])

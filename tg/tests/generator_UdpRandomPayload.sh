@@ -3,7 +3,8 @@
 . $(dirname $(readlink -f $0))/common.sh
 
 
-
+ETH_SOURCE_MAC="$(random_mac)"
+ETH_DESTINATION_MAC="$(random_mac)"
 IP_TTL=3
 IP_SOURCE=$(random_ipv4)
 IP_DESTINATION=$(random_ipv4)
@@ -13,7 +14,10 @@ PAYLOAD_LENGTH=$(random_byte)
 
 
 
-run_one_and_display UdpRandomPayload \
+run_and_display UdpRandomPayload \
+	--num 1 \
+	--eth_source_mac ${ETH_SOURCE_MAC} \
+	--eth_destination_mac ${ETH_DESTINATION_MAC} \
 	--ip_ttl ${IP_TTL} \
 	--ip_source_address ${IP_SOURCE} \
 	--ip_destination_address ${IP_DESTINATION} \

@@ -16,11 +16,8 @@ import time
 class Runner(object):
 	"""executor holds code to execute the generator"""
 
-	WRAPPER = """
+	HEADER = """
 #include "{tg_path}/bin/trafgen_stddef.h"
-{{{{
-{packet}
-}}}}
 """
 
 	@staticmethod
@@ -30,6 +27,7 @@ class Runner(object):
 		# generic arguments
 		parser.add_argument("--debug", action="store_true", default=False, help="debug output")
 		parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
+		parser.add_argument("--dev", help="output iface; defaults to iface with default gw; eg. eth0")
 
 		# timings
 		parser.add_argument("--time", help="generate packets for specified time; eg. 2m3s")
@@ -51,9 +49,16 @@ class Runner(object):
 		self.generator = generator
 		self.fields = fields
 
+		# generic fields
+		self.fields["tg_path"] = os.path.dirname(os.path.realpath(sys.argv[0]))
+		if not fields["dev"]:
+			fields["dev"] = tg.utils.default_output_interface()
+
+		# timings
 		if self.fields["time"]:
 			self.fields["time"] = tg.utils.parse_time(str(self.fields["time"]))
 
+		# generator specifics
 		for layer in [x for x in self.generator.LAYERS if isinstance(x, type)]:
 			self.fields = layer.process_fields(self.fields)
 		self.fields = self.generator.process_fields(self.fields)
@@ -63,19 +68,16 @@ class Runner(object):
 	def compile(self):
 		"""compile source for trafgen"""
 
-		# compile source for config from all layers
-		template = ""
+		# compile source template for config from all layers
+		template = self.HEADER
 		for layer in self.generator.LAYERS:
 			if isinstance(layer, type):
 				template += layer.TEMPLATE
 			else:
 				template += layer
 
-		# wrap and fill fields
-		wrapped = tg.runner.Runner.WRAPPER.format( \
-			tg_path=os.path.dirname(os.path.realpath(sys.argv[0])),
-			packet=template)
-		return wrapped.format(**self.fields)
+		# run template
+		return template.format(**self.fields)
 
 
 

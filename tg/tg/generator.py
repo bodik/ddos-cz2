@@ -6,26 +6,25 @@ import tg
 
 #====================================================================
 @tg.modreg.register
-class EthernetFilePayload(object):
-	"""generator impl - udp random payload"""
+class RawConfig(object):
+	"""generator impl - raw config generator"""
 
 	TEMPLATE = """
-/* payload */				{payload}
+/* rawconfig */				{rawconfig}
 """
-	LAYERS = [tg.layer.Ethernet, TEMPLATE]
+	LAYERS = [TEMPLATE]
 	
 	@staticmethod
 	def parse_arguments(parser):
 		"""parse arguments"""
 	
-		parser.add_argument("--eth_protocol", required=True ,help="eg. 0x0800")
 		parser.add_argument("--filename", required=True, help="full payload filename")
 
 
 	@staticmethod
 	def process_fields(fields):
 		with open(fields["filename"], "r") as ftmp:
-			fields["payload"] = ftmp.read()
+			fields["rawconfig"] = ftmp.read()
 		return fields
 	
 
@@ -38,7 +37,7 @@ class UdpRandomPayload(object):
 	TEMPLATE = """
 /* payload */				drnd({length}),
 """
-	LAYERS = [tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Udp, TEMPLATE]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Udp, TEMPLATE, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):

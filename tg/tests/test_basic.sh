@@ -4,24 +4,24 @@
 
 
 
-TESTPAYLOAD=$(mktemp /tmp/tg2_test_basic_XXXXXX)
-echo "0" > $TESTPAYLOAD
+RAWCONFIG=$(mktemp /tmp/tg2_test_basic_XXXXXX)
+echo "{ 0 }" > $RAWCONFIG
 
 
 
 # test send number of packets
-NUMBER=$(random_byte)
-run_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD} --num ${NUMBER}
+NUMBER=$(($(random_byte)+1))
+run_and_display RawConfig --filename ${RAWCONFIG} --num ${NUMBER}
 check_value "scapy_display.summary.count: ${NUMBER}"
 
 
 # test send number of packets for time at specified rate
 NUMBER=4
-run_and_display EthernetFilePayload --eth_protocol "0x0000" --filename ${TESTPAYLOAD} --time ${NUMBER} --rate 1pps
+run_and_display RawConfig --filename ${RAWCONFIG} --time ${NUMBER} --rate 1pps
 check_value "scapy_display.summary.count: ${NUMBER}"
 
 
 
-rm -f ${TESTPAYLOAD}
+rm -f ${RAWCONFIG}
 cleanup
 rreturn 0 "$0"

@@ -20,10 +20,15 @@ def expand(x):
 
 def display(packets):
 	for packet in packets:
-		for layer in list(expand(Ether(packet.load))):
+		try:
+			packet = Ether(packet.load)
+		except:
+			pass
+
+		for layer in expand(packet):
 			for field in layer.fields:
 				if layer.name == "Raw":
-					layer.display()
+					print "%s: %s" % ("Raw.load", repr(layer.load))
 				else:
 					print "%s.%s: %s" % (layer.name, field, layer.fields[field])
 	return 0
