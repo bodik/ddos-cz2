@@ -92,9 +92,6 @@ class Ipv4(object):
 
 
 
-
-
-
 #====================================================================
 class Udp(object):
 	"""layer udp"""
@@ -103,8 +100,8 @@ class Udp(object):
 	TEMPLATE = """
 /* udp source port */			{udp_source_port},
 /* udp destination port */		{udp_destination_port},
-/* udp total length */			const16({udp_total_length}),
-/* udp checksum */			const16(0),
+/* udp total length */			c16({udp_total_length}),
+/* udp checksum */			c16(0),
 """
 
 
@@ -131,4 +128,72 @@ class Udp(object):
 
 		fields = process_port(fields, "udp_source_port")
 		fields = process_port(fields, "udp_destination_port")
+		return fields
+
+
+
+#====================================================================
+class Tcp(object):
+	"""layer tcp"""
+
+	HEADER_LENGTH = 20
+	TEMPLATE = """
+/* tcp source port */			{tcp_source_port},
+/* tco destination port */		{tcp_destination_port},
+/* tcp sequence number */		{tcp_sequence_number},
+/* tcp acknowledgment number */		{tcp_acknowledgment_number},
+/* tcp offset, reserver, flags */	c16((5 << 12) | {tcp_flags}),
+/* tcp window size */			{tcp_window_size},
+/* tcp checksum */			TCP_CSUM_DEFAULT,
+/* tcp urgent pointer */		0x00, 0x00,
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--tcp_source_port", default=12345, help="eg. 123|rnd|drnd")
+		parser.add_argument("--tcp_destination_port", default=12345, help="eg. 123|rnd|drnd")
+		parser.add_argument("--tcp_sequence_number", default="drnd", help="eg. 123|rnd|drnd")
+		parser.add_argument("--tcp_acknowledgment_number", default=0, help="eg. 123|rnd|drnd")
+		parser.add_argument("--tcp_flags", default="S", help="eg. CEUAPRSF (not N)")
+		parser.add_argument("--tcp_window_size", default=65001, help="eg. 123|rnd|drnd")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		def process_port(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(2)" % fields[selector]
+			else:
+				fields[selector] = "c16(%d)" % int(fields[selector])
+			return fields
+
+		def process_sa_number(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(4)" % fields[selector]
+			else:
+				fields[selector] = "c32(%d)" % int(fields[selector])
+			return fields
+
+		def process_flags(fields, selector):
+			tran = { \
+				"C": "TCP_FLAG_CWR", "E": "TCP_FLAG_ECE", "U": "TCP_FLAG_URG", "A": "TCP_FLAG_ACK",
+				"P": "TCP_FLAG_PSH", "R": "TCP_FLAG_RST", "S": "TCP_FLAG_SYN", "F": "TCP_FLAG_FIN"}
+			fields[selector] = "|".join([tran[x] for x in fields[selector]])
+			return fields
+
+		fields = process_port(fields, "tcp_source_port")
+		fields = process_port(fields, "tcp_destination_port")
+		fields = process_sa_number(fields, "tcp_sequence_number")
+		fields = process_sa_number(fields, "tcp_acknowledgment_number")
+		fields = process_flags(fields, "tcp_flags")
+		fields = process_port(fields, "tcp_window_size")
 		return fields

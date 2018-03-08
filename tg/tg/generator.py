@@ -58,3 +58,27 @@ class UdpRandomPayload(object):
 		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]
 		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + fields["udp_total_length"]
 		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
+class TcpHeader(object):
+	"""generator impl - tcp header"""
+
+	TEMPLATE = ""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Tcp, "}}"]
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		fields["eth_protocol"] = "0x800"
+		fields["ip_protocol"] = "6"
+		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + tg.layer.Tcp.HEADER_LENGTH
+		return fields

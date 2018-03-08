@@ -29,6 +29,8 @@ def display(packets):
 			for field in layer.fields:
 				if layer.name == "Raw":
 					print "%s: %s" % ("Raw.load", repr(layer.load))
+				elif (layer.name == "TCP") and (field == "flags"):
+					print "%s.%s: %s [%s]" % (layer.name, field, layer.flags, layer.sprintf('%TCP.flags%'))
 				else:
 					print "%s.%s: %s" % (layer.name, field, layer.fields[field])
 	return 0
