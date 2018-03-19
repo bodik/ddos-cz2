@@ -88,6 +88,7 @@ case "$1" in
 
 		for all in $($0 list); do
 			cat ~/.ssh/id_rsa.pub | NAME=$all $0 ssh 'cat >> ~/.ssh/authorized_keys2'
+			ssh-keyscan $all >> ~/.ssh/known_hosts
 		done
 	;;
 
