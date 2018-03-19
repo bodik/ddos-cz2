@@ -1,0 +1,98 @@
+#!/bin/sh
+
+NODES=tsung.nodes
+BOOTSTRAP="https://haas.cesnet.cz/ddos-cz2.git/bootstrap.sh"
+
+if [ ! -s "$NODES" ]; then
+	echo "File $NODES not exists or empty!"
+	exit 2
+fi
+
+node_check() {
+	NAME=$1
+
+	if [ -z "$NAME" ]; then
+		echo "NAME not specified"
+		exit 1
+	fi
+
+	cat $NODES | egrep "^$NAME$"
+	if [ $? -ne 0 ]; then
+		echo "NODE $1 not specified in list ($NODES)"
+		exit 1
+	fi
+}
+
+rreturn() {
+	RET=$1
+	MSG=$2
+	if [ $RET -eq 0 ]; then
+		echo "RESULT: OK $MSG"
+		exit 0
+	else
+		echo "RESULT: FAILED $MSG"
+		exit 1
+	fi
+
+	echo "RESULT: FAILED THIS SHOULD NOT HAPPEN $0 $@"
+	exit 1
+}
+
+node_list() {
+	for node in `cat $NODES`; do echo "\t$node"; done
+}
+
+node_ssh() {
+	node_check $NAME
+	ssh -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'ConnectTimeout=5' -o 'LogLevel=quiet' root@$NAME "$1"
+	rreturn $? "$0 ssh $@"
+}
+
+node_all() {
+	for all in $($0 list); do
+		if [ "$all" != "localhost" ]; then
+			NAME=$all $0 ssh "$1"
+		fi
+	done
+}
+
+case "$1" in
+
+	list)
+		node_list
+	;;
+	ssh)
+		node_ssh "$2"
+	;;
+	node)
+		NAME=$2 $0 ssh "$3"
+	;;
+	all)
+		node_all "$2"
+	;;
+	init)
+		node_all "cd /tmp && git clone https://haas.cesnet.cz/ddos-cz2.git && sh ddos-cz2/tsung/bin/build.sh && mkdir -p ~/.ssh"
+	;;
+	sshgen)
+		if [ ! -s ~/.ssh/id_rsa ]; then
+			cat /dev/zero | ssh-keygen -q -N "" > /dev/null 2> /dev/null
+		else
+			echo "SSH key already exists, nothing to do"
+		fi
+	;;
+	maketrust)
+		if [ ! -s ~/.ssh/id_rsa.pub ]; then
+			echo "Local id_rsa.pub not present, use ssh-keygen"
+			exit 1
+		fi
+
+		for all in $($0 list); do
+			cat ~/.ssh/id_rsa.pub | NAME=$all $0 ssh 'cat >> ~/.ssh/authorized_keys2'
+		done
+	;;
+
+	*)
+		rreturn 1 "$0 wrong command"
+	;;
+esac
+
