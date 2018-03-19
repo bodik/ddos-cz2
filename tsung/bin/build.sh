@@ -5,11 +5,14 @@ TSUNG_VERSION="1.7.0"
 TSUNG_SOURCE="tsung-${TSUNG_VERSION}.tar.gz"
 TSUNG_SOURCE_DIR="tsung-${TSUNG_VERSION}"
 TSUNG_URL="http://tsung.erlang-projects.org/dist/${TSUNG_SOURCE}"
+BUILD_AREA=/tmp/build_area
 
 apt-get update
 apt-get install -y build-essential gnuplot-nox libtemplate-perl libhtml-template-perl libhtml-template-expr-perl erlang-dev erlang-src erlang-snmp erlang-inets erlang-p1-xml
 
-cd /tmp
+mkdir -p $BUILD_AREA
+cd $BUILD_AREA || exit 1
+
 wget $TSUNG_URL -O $TSUNG_SOURCE
 tar xzvf $TSUNG_SOURCE
 cd $TSUNG_SOURCE_DIR
