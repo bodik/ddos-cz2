@@ -3,6 +3,8 @@
 ## Requirements
 
 * `python-pyroute2`
+* `python-scapy`
+* `cpp`
 
 
 ## Run
