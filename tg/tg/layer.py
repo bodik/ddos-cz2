@@ -45,20 +45,20 @@ class Ethernet(object):
 
 
 #====================================================================
-class Ipv4(object):
-	"""layer ipv4 impl"""
+class Ip4(object):
+	"""layer ip4 impl"""
 
 	HEADER_LENGTH = 20
 	TEMPLATE = """
-/* ipv4 version, ihl, tos */		0b01000101, 0,
-/* ipv4 total length */			c16({ip_total_length}),
-/* ipv4 ipid */				drnd(2),
-/* ipv4 flags, fragment offset */	0b01000000, 0,
-/* ipv4 ttl */				{ip_ttl},
-/* ipv4 protocol */			{ip_protocol},
-/* ipv4 checksum */			IP_CSUM_DEFAULT,
-/* ipv4 source ip */			{ip_source_address},
-/* ipv4 destination ip */		{ip_destination_address},
+/* ip4 version, ihl, tos */		0b01000101, 0,
+/* ip4 total length */			c16({ip4_total_length}),
+/* ip4 ipid */				drnd(2),
+/* ip4 flags, fragment offset */	0b01000000, 0,
+/* ip4 ttl */				{ip4_ttl},
+/* ip4 protocol */			{ip4_protocol},
+/* ip4 checksum */			IP_CSUM_DEFAULT,
+/* ip4 source ip */			{ip4_source_address},
+/* ip4 destination ip */		{ip4_destination_address},
 """
 
 
@@ -66,16 +66,16 @@ class Ipv4(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
-		parser.add_argument("--ip_ttl", default=21)
-		parser.add_argument("--ip_source_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
-		parser.add_argument("--ip_destination_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
+		parser.add_argument("--ip4_ttl", default=21)
+		parser.add_argument("--ip4_source_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
+		parser.add_argument("--ip4_destination_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
 
 
 	@staticmethod
 	def process_fields(fields):
 		"""process input parameters to fields"""
 
-		def process_ip_address(fields, selector):
+		def process_ip4_address(fields, selector):
 			"""handle self, rnd, drnd cases to field values"""
 
 			if fields[selector] == "self":
@@ -87,23 +87,23 @@ class Ipv4(object):
 			fields[selector] = tg.utils.trafgen_format_ip(fields[selector])
 			return fields
 
-		fields = process_ip_address(fields, "ip_source_address")
-		fields = process_ip_address(fields, "ip_destination_address")
+		fields = process_ip4_address(fields, "ip4_source_address")
+		fields = process_ip4_address(fields, "ip4_destination_address")
 		return fields
 
 
 
 #====================================================================
 
-class Ipv6(object):
-	"""layer ipv6 impl"""
+class Ip6(object):
+	"""layer ip6 impl"""
 
 	HEADER_LENGTH = 40
 	TEMPLATE = """
-/* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, {ip6_flow_label},
-/* ipv6 payload length, ipv6 next header, ipv6 hop limit */	c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
-/* ipv6 source ip */						{ip6_source_address},
-/* ipv6 destination ip */					{ip6_destination_address},
+/* ip6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, {ip6_flow_label},
+/* ip6 payload length, next header, hop limit */		c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
+/* ip6 source ip */						{ip6_source_address},
+/* ip6 destination ip */					{ip6_destination_address},
 """
 
 
