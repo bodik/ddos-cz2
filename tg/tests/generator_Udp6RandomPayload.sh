@@ -27,7 +27,7 @@ run_and_display Udp6RandomPayload \
 
 
 
-check_value "IPv6.plen: $((40+8+${PAYLOAD_LENGTH}))"
+check_value "IPv6.plen: $((8+${PAYLOAD_LENGTH}))"
 check_value "IPv6.hlim: ${IP6_HOP_LIMIT}"
 check_value "IPv6.nh: 17"
 check_value "IPv6.src: ${IP6_SOURCE}"
