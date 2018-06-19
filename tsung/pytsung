@@ -1,0 +1,63 @@
+#!/usr/bin/python
+"""tsung python wrapper"""
+
+import argparse
+import logging
+import sys
+import tsung
+
+def check_positive(value):
+    ivalue = int(value)
+    if ivalue <= 0:
+         raise argparse.ArgumentTypeError("%s is an invalid positive int value" % value)
+    return ivalue
+
+logger = logging.getLogger()
+logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+
+    # basic arguments
+    parser.add_argument("host", help="destination ip or hostname")
+    parser.add_argument("--method", "-m", default="GET", choices=["GET", "POST"], help="HTTP method")
+    parser.add_argument("--uri", default="/", help="destination uri")
+    parser.add_argument("--port", "-p", default=80, help="destination port")
+    parser.add_argument("--ssl", action="store_true", default=False, help="use secure connection")
+    parser.add_argument("--clients", default="localhost", help="source ip or hosts comma-separated")
+
+    parser.add_argument("--content", help="request content")
+
+    # performance arguments
+    parser.add_argument("--users", "-u", default=1000, type=int, choices=xrange(1,10000), metavar='{1-10000}' ,help="concurent users")
+    parser.add_argument("--requests", "-r", default=1, type=check_positive, metavar='{Positive number}', help='request per users')
+
+    # generic arguments
+    parser.add_argument("--debug", action="store_true", default=False, help="debug output")
+    parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
+    parser.add_argument("--dev", help="output iface; defaults to iface with default gw; eg. eth0")
+
+    # timings
+    parser.add_argument("--time", help="generate packets for specified time; eg. 2m3s")
+
+    return parser.parse_args()
+
+def main():
+	"""main"""
+	args = parse_arguments()
+	if args.debug:
+		logger.setLevel(logging.DEBUG)
+
+	runner = tsung.runner.Runner(args.__dict__)
+	logger.debug("fields: %s", runner.fields)
+
+	if args.dump:
+		print runner.compile()
+		ret = 0
+	else:
+		ret = runner.run()
+
+	return ret
+
+if __name__ == "__main__":
+	sys.exit(main())
