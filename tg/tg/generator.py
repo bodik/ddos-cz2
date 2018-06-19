@@ -138,3 +138,27 @@ class Tcp6Header(object):
 		fields["ip6_next_header"] = 6
 		fields["ip6_payload_length"] = tg.layer.Tcp.HEADER_LENGTH
 		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
+class Icmpv6(object):
+	"""generator impl - icmpv6"""
+
+	TEMPLATE = ""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Icmpv6, "}}"]
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		fields["eth_protocol"] = "0x86dd"
+		fields["ip6_next_header"] = 58
+		fields["ip6_payload_length"] = tg.layer.Icmpv6.HEADER_LENGTH + len(fields["icmpv6_message_body"])
+		return fields

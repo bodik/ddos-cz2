@@ -259,3 +259,33 @@ class Tcp(object):
 		fields = process_flags(fields, "tcp_flags")
 		fields = process_port(fields, "tcp_window_size")
 		return fields
+
+
+
+#====================================================================
+class Icmpv6(object):
+	"""layer icmpv6"""
+
+	HEADER_LENGTH = 32
+	TEMPLATE = """
+/* icmpv6 type */		{icmpv6_type},
+/* icmpv6 code */		{icmpv6_code},
+/* icmpv6 checksump */		c16(0),
+/* icmpv6 message body */	"{icmpv6_message_body}",
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--icmpv6_type", default=128, help="eg. 123")
+		parser.add_argument("--icmpv6_code", default=0, help="eg. 123")
+		parser.add_argument("--icmpv6_message_body", default="this is a ping", help="eg. data")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		return fields
