@@ -100,7 +100,7 @@ class Ipv6(object):
 
 	HEADER_LENGTH = 40
 	TEMPLATE = """
-/* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, 1,
+/* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, {ip6_flow_label},
 /* ipv6 payload length, ipv6 next header, ipv6 hop limit */	c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
 /* ipv6 source ip */						{ip6_source_address},
 /* ipv6 destination ip */					{ip6_destination_address},
@@ -111,6 +111,7 @@ class Ipv6(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
+		parser.add_argument("--ip6_flow_label", default=2, help="lower byte of Flow Label field; int|rnd|drnd")
 		parser.add_argument("--ip6_hop_limit", default=21)
 		parser.add_argument("--ip6_source_address", default="self", help="eg. a:b:c:d::e|self|rnd|drnd")
 		parser.add_argument("--ip6_destination_address", default="self", help="eg. a:b:c:d::e|self|rnd|drnd")
@@ -119,6 +120,16 @@ class Ipv6(object):
 	@staticmethod
 	def process_fields(fields):
 		"""process input parameters to fields"""
+
+		def process_flow_label(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(1)" % fields[selector]
+			else:
+				fields[selector] = "c8(%d)" % int(fields[selector])
+			return fields
+
 
 		def process_ip6_address(fields, selector):
 			"""handle self, rnd, drnd cases to field values"""
@@ -136,6 +147,7 @@ class Ipv6(object):
 
 			return fields
 
+		fields = process_flow_label(fields, "ip6_flow_label")
 		fields = process_ip6_address(fields, "ip6_source_address")
 		fields = process_ip6_address(fields, "ip6_destination_address")
 		return fields
