@@ -114,3 +114,27 @@ class TcpHeader(object):
 		fields["ip_protocol"] = "6"
 		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + tg.layer.Tcp.HEADER_LENGTH
 		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
+class Tcp6Header(object):
+	"""generator impl - tcp header over ipv6"""
+
+	TEMPLATE = ""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Tcp, "}}"]
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		fields["eth_protocol"] = "0x86dd"
+		fields["ip6_next_header"] = 6
+		fields["ip6_payload_length"] = tg.layer.Tcp.HEADER_LENGTH
+		return fields
