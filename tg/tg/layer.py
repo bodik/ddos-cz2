@@ -263,15 +263,15 @@ class Tcp(object):
 
 
 #====================================================================
-class Icmpv6(object):
-	"""layer icmpv6"""
+class Icmp6Echo(object):
+	"""simplified cmpv6+echo message"""
 
-	HEADER_LENGTH = 32
+	HEADER_LENGTH = 8
 	TEMPLATE = """
-/* icmpv6 type */		{icmpv6_type},
-/* icmpv6 code */		{icmpv6_code},
-/* icmpv6 checksump */		c16(0),
-/* icmpv6 message body */	"{icmpv6_message_body}",
+/* icmp6 type, icmp6 code */		128, 0,
+/* icmp6 checksum */			csumicmp6(14,54),
+/* icmp6echo type identifier */		{icmp6echo_identifier},
+/* icmp6echo type sequence */		{icmp6echo_sequence_number},
 """
 
 
@@ -279,13 +279,23 @@ class Icmpv6(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
-		parser.add_argument("--icmpv6_type", default=128, help="eg. 123")
-		parser.add_argument("--icmpv6_code", default=0, help="eg. 123")
-		parser.add_argument("--icmpv6_message_body", default="this is a ping", help="eg. data")
+		parser.add_argument("--icmp6echo_identifier", default=0, help="eg. 123|rnd|drnd")
+		parser.add_argument("--icmp6echo_sequence_number", default=0, help="eg. 123|rnd|drnd")
 
 
 	@staticmethod
 	def process_fields(fields):
 		"""process input parameters to fields"""
 
+		def process_options_numbers(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(2)" % fields[selector]
+			else:
+				fields[selector] = "c16(%d)" % int(fields[selector])
+			return fields
+
+		fields = process_options_numbers(fields, "icmp6echo_identifier")
+		fields = process_options_numbers(fields, "icmp6echo_sequence_number")
 		return fields

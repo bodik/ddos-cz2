@@ -143,15 +143,19 @@ class Tcp6Header(object):
 
 #====================================================================
 @tg.modreg.register
-class Icmpv6(object):
-	"""generator impl - icmpv6"""
+class Icmp6Echo(object):
+	"""generator impl - icmp6 echo"""
 
-	TEMPLATE = ""
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Icmpv6, "}}"]
+	TEMPLATE = """
+/* icmp6 echo data */		"{icmp6echo_data}",
+"""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Icmp6Echo, TEMPLATE, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
 		"""parse arguments"""
+
+		parser.add_argument("--icmp6echo_data", default="this is a ping", help="eg. data")
 
 
 	@staticmethod
@@ -160,5 +164,5 @@ class Icmpv6(object):
 
 		fields["eth_protocol"] = "0x86dd"
 		fields["ip6_next_header"] = 58
-		fields["ip6_payload_length"] = tg.layer.Icmpv6.HEADER_LENGTH + len(fields["icmpv6_message_body"])
+		fields["ip6_payload_length"] = tg.layer.Icmp6Echo.HEADER_LENGTH + len(fields["icmp6echo_data"])
 		return fields
