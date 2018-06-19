@@ -88,7 +88,7 @@ class Udp6RandomPayload(object):
 		fields["eth_protocol"] = "0x86dd"
 		fields["ip6_next_header"] = 17
 		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]
-		fields["ip6_total_length"] = tg.layer.Ipv6.HEADER_LENGTH + fields["udp_total_length"]
+		fields["ip6_payload_length"] = fields["udp_total_length"]
 		return fields
 
 

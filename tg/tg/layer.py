@@ -101,7 +101,7 @@ class Ipv6(object):
 	HEADER_LENGTH = 40
 	TEMPLATE = """
 /* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, 1,
-/* ipv6 total length, ipv6 next header, ipv6 hop limit */	c16({ip6_total_length}), {ip6_next_header}, {ip6_hop_limit},
+/* ipv6 payload length, ipv6 next header, ipv6 hop limit */	c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
 /* ipv6 source ip */						{ip6_source_address},
 /* ipv6 destination ip */					{ip6_destination_address},
 """
