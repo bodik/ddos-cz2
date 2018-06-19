@@ -1,6 +1,7 @@
 #!/usr/bin/python
 """layers implementation"""
 
+import socket
 import tg
 
 
@@ -88,6 +89,55 @@ class Ipv4(object):
 
 		fields = process_ip_address(fields, "ip_source_address")
 		fields = process_ip_address(fields, "ip_destination_address")
+		return fields
+
+
+
+#====================================================================
+
+class Ipv6(object):
+	"""layer ipv6 impl"""
+
+	HEADER_LENGTH = 40
+	TEMPLATE = """
+/* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, 1,
+/* ipv6 total length, ipv6 next header, ipv6 hop limit */	c16({ip6_total_length}), {ip6_next_header}, {ip6_hop_limit},
+/* ipv6 source ip */						{ip6_source_address},
+/* ipv6 destination ip */					{ip6_destination_address},
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--ip6_hop_limit", default=21)
+		parser.add_argument("--ip6_source_address", default="self", help="eg. a:b:c:d::e|self|rnd|drnd")
+		parser.add_argument("--ip6_destination_address", default="self", help="eg. a:b:c:d::e|self|rnd|drnd")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		def process_ip6_address(fields, selector):
+			"""handle self, rnd, drnd cases to field values"""
+
+			if fields[selector] == "self":
+				fields[selector] = tg.utils.interface_ip(fields["dev"], socket.AF_INET6)
+				fields[selector] = tg.utils.trafgen_format_ip(fields[selector])
+			elif fields[selector] in ["rnd", "drnd"]:
+				tmp = tg.utils.interface_ip(fields["dev"], socket.AF_INET6)
+				tmp = tg.utils.trafgen_format_ip(tmp).split(",")
+				tmp[-1] = "%s(2)" % fields[selector]
+				fields[selector] = ",".join(tmp)
+			else:
+				fields[selector] = tg.utils.trafgen_format_ip(fields[selector])
+
+			return fields
+
+		fields = process_ip6_address(fields, "ip6_source_address")
+		fields = process_ip6_address(fields, "ip6_destination_address")
 		return fields
 
 

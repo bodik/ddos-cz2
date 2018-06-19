@@ -63,6 +63,38 @@ class UdpRandomPayload(object):
 
 #====================================================================
 @tg.modreg.register
+class Udp6RandomPayload(object):
+	"""generator impl - udp random payload over ipv6"""
+
+	TEMPLATE = """
+/* payload */				drnd({length}),
+"""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Udp, TEMPLATE, "}}"]
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--length", default=666, help="payload length; eg. 123")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		if fields["length"]:
+			fields["length"] = int(fields["length"])
+
+		fields["eth_protocol"] = "0x86dd"
+		fields["ip6_next_header"] = 17
+		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]
+		fields["ip6_total_length"] = tg.layer.Ipv6.HEADER_LENGTH + fields["udp_total_length"]
+		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
 class TcpHeader(object):
 	"""generator impl - tcp header"""
 
