@@ -35,6 +35,10 @@ random_ipv4() {
 }
 
 
+random_ipv6() {
+	python -c "import random; print ':'.join(['%x'%random.randint(0,65025) for x in range(8)])"
+}
+
 
 run_and_display() {
 	GENERATOR=$1
@@ -43,6 +47,8 @@ run_and_display() {
 	echo "INFO: test for ${GENERATOR} ${TESTID_FILE} ${TESTID_FILE_DISPLAYED}"
 	${BASEDIR}/tg2 ${GENERATOR} --debug --dev ${TESTID_FILE} $@ || rreturn $? "$0 tg2"
 	${BASEDIR}/bin/scapy_display.py ${TESTID_FILE} > ${TESTID_FILE_DISPLAYED} || rreturn $? "$0 scapy_display.py"
+
+	cat ${TESTID_FILE_DISPLAYED}
 }
 
 

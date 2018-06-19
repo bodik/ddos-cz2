@@ -2,6 +2,7 @@
 """tg utils module"""
 
 import datetime
+import ipaddress
 import pyroute2
 import re
 import struct
@@ -98,7 +99,15 @@ def trafgen_format_mac(mac):
 
 def trafgen_format_ip(ipaddr):
 	"""format ip address to trafgen bytes"""
-	return ipaddr.replace(".", ",")
+
+	if ipaddr.count(".") == 3:
+		return ipaddr.replace(".", ",")
+
+	if ipaddr.count(":") >= 2:
+		tmp = ipaddress.IPv6Address(unicode(ipaddr, "utf-8")).exploded.split(":")
+		return ",".join(map(lambda x: "c16(0x%s)"%x, tmp))
+
+	raise ValueError("invalid ipaddr")
 
 
 

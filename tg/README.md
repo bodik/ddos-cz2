@@ -5,6 +5,7 @@
 * `python-pyroute2`
 * `python-scapy`
 * `cpp`
+* `python-ipaddress`
 
 
 ## Run
