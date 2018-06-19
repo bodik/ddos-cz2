@@ -37,7 +37,7 @@ class UdpRandomPayload(object):
 	TEMPLATE = """
 /* payload */				drnd({length}),
 """
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Udp, TEMPLATE, "}}"]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
@@ -54,9 +54,9 @@ class UdpRandomPayload(object):
 			fields["length"] = int(fields["length"])
 
 		fields["eth_protocol"] = "0x800"
-		fields["ip_protocol"] = "17"
+		fields["ip4_protocol"] = "17"
 		fields["udp_total_length"] = tg.layer.Udp.HEADER_LENGTH + fields["length"]
-		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + fields["udp_total_length"]
+		fields["ip4_total_length"] = tg.layer.Ip4.HEADER_LENGTH + fields["udp_total_length"]
 		return fields
 
 
@@ -69,7 +69,7 @@ class Udp6RandomPayload(object):
 	TEMPLATE = """
 /* payload */				drnd({length}),
 """
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Udp, TEMPLATE, "}}"]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Udp, TEMPLATE, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
@@ -99,7 +99,7 @@ class TcpHeader(object):
 	"""generator impl - tcp header"""
 
 	TEMPLATE = ""
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv4, tg.layer.Tcp, "}}"]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Tcp, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
@@ -111,8 +111,8 @@ class TcpHeader(object):
 		"""process arguments to fileds"""
 
 		fields["eth_protocol"] = "0x800"
-		fields["ip_protocol"] = "6"
-		fields["ip_total_length"] = tg.layer.Ipv4.HEADER_LENGTH + tg.layer.Tcp.HEADER_LENGTH
+		fields["ip4_protocol"] = "6"
+		fields["ip4_total_length"] = tg.layer.Ip4.HEADER_LENGTH + tg.layer.Tcp.HEADER_LENGTH
 		return fields
 
 
@@ -123,7 +123,7 @@ class Tcp6Header(object):
 	"""generator impl - tcp header over ipv6"""
 
 	TEMPLATE = ""
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Tcp, "}}"]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Tcp, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
@@ -149,7 +149,7 @@ class Icmp6Echo(object):
 	TEMPLATE = """
 /* icmp6 echo data */		"{icmp6echo_data}",
 """
-	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ipv6, tg.layer.Icmp6Echo, TEMPLATE, "}}"]
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Icmp6Echo, TEMPLATE, "}}"]
 
 	@staticmethod
 	def parse_arguments(parser):
