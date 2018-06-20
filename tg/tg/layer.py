@@ -10,6 +10,7 @@ import tg
 class Ethernet(object):
 	"""layer ethernet impl"""
 
+	HEADER_LENGTH = 14
 	TEMPLATE = """
 /* eth destination mac */		{eth_destination_mac},
 /* eth source mac */			{eth_source_mac},
@@ -258,6 +259,46 @@ class Tcp(object):
 		fields = process_sa_number(fields, "tcp_acknowledgment_number")
 		fields = process_flags(fields, "tcp_flags")
 		fields = process_port(fields, "tcp_window_size")
+		return fields
+
+
+
+#====================================================================
+class IcmpEcho(object):
+	"""simplified icmp+echo message"""
+
+	HEADER_LENGTH = 8
+	TEMPLATE = """
+/* icmp type, icmp code */			8, 0,
+/* icmp checksum(ETH_HLEN+IP4_HLEN, END) */	csumicmp(34,{icmpecho_payload_end}),
+/* icmpecho type identifier */			{icmpecho_identifier},
+/* icmpecho type sequence */			{icmpecho_sequence_number},
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--icmpecho_identifier", default=0, help="eg. 123|rnd|drnd")
+		parser.add_argument("--icmpecho_sequence_number", default=0, help="eg. 123|rnd|drnd")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		def process_options_numbers(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(2)" % fields[selector]
+			else:
+				fields[selector] = "c16(%d)" % int(fields[selector])
+			return fields
+
+		fields = process_options_numbers(fields, "icmpecho_identifier")
+		fields = process_options_numbers(fields, "icmpecho_sequence_number")
 		return fields
 
 

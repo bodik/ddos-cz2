@@ -143,6 +143,43 @@ class Tcp6Header(object):
 
 #====================================================================
 @tg.modreg.register
+class IcmpEcho(object):
+	"""generator impl - icmp echo"""
+
+	TEMPLATE = """
+/* icmp echo data */		"{icmpecho_data}",
+"""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.IcmpEcho, TEMPLATE, "}}"]
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--icmpecho_data", default="this is a ping", help="eg. data")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		def process_icmpecho_data(fields, selector):
+			if (len(fields[selector]) % 2) != 0:
+				# naive (no automatic padding) csumicmp/csumip/calc_csum impl, requires data to by 16b aligned
+				raise ValueError("invalid data (alignment error)")
+			return fields
+
+		fields["eth_protocol"] = "0x800"
+		fields["ip4_protocol"] = 1
+		fields = process_icmpecho_data(fields, "icmpecho_data")
+		fields["ip4_total_length"] = tg.layer.Ip4.HEADER_LENGTH + tg.layer.IcmpEcho.HEADER_LENGTH + len(fields["icmpecho_data"])
+		fields["icmpecho_payload_end"] = tg.layer.Ethernet.HEADER_LENGTH + tg.layer.Ip4.HEADER_LENGTH + 8 + len(fields["icmpecho_data"])
+		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
 class Icmp6Echo(object):
 	"""generator impl - icmp6 echo"""
 
@@ -150,6 +187,7 @@ class Icmp6Echo(object):
 /* icmp6 echo data */		"{icmp6echo_data}",
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Icmp6Echo, TEMPLATE, "}}"]
+
 
 	@staticmethod
 	def parse_arguments(parser):
