@@ -6,8 +6,8 @@
 ETH_SOURCE_MAC="$(random_mac)"
 ETH_DESTINATION_MAC="$(random_mac)"
 IP4_TTL=3
-IP4_SOURCE=$(random_ipv4)
-IP4_DESTINATION=$(random_ipv4)
+IP4_SOURCE=$(random_ip4)
+IP4_DESTINATION=$(random_ip4)
 TCP_SOURCE=$(random_int)
 TCP_DESTINATION=$(random_int)
 

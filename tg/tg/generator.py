@@ -13,6 +13,7 @@ class RawConfig(object):
 /* rawconfig */				{rawconfig}
 """
 	LAYERS = [TEMPLATE]
+
 	
 	@staticmethod
 	def parse_arguments(parser):
@@ -38,6 +39,7 @@ class UdpRandomPayload(object):
 /* payload */				drnd({length}),
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
+
 
 	@staticmethod
 	def parse_arguments(parser):
@@ -71,6 +73,7 @@ class Udp6RandomPayload(object):
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Udp, TEMPLATE, "}}"]
 
+
 	@staticmethod
 	def parse_arguments(parser):
 		"""parse arguments"""
@@ -101,6 +104,7 @@ class TcpHeader(object):
 	TEMPLATE = ""
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Tcp, "}}"]
 
+
 	@staticmethod
 	def parse_arguments(parser):
 		"""parse arguments"""
@@ -124,6 +128,7 @@ class Tcp6Header(object):
 
 	TEMPLATE = ""
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip6, tg.layer.Tcp, "}}"]
+
 
 	@staticmethod
 	def parse_arguments(parser):

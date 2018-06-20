@@ -270,7 +270,7 @@ class IcmpEcho(object):
 	HEADER_LENGTH = 8
 	TEMPLATE = """
 /* icmp type, icmp code */			8, 0,
-/* icmp checksum(ETH_HLEN+IP4_HLEN, END) */	csumicmp(34,{icmpecho_payload_end}),
+/* icmp checksum(ETH_HLEN+IP4_HLEN, END) */	csumicmp(34, {icmpecho_payload_end}),
 /* icmpecho type identifier */			{icmpecho_identifier},
 /* icmpecho type sequence */			{icmpecho_sequence_number},
 """
@@ -305,7 +305,7 @@ class IcmpEcho(object):
 
 #====================================================================
 class Icmp6Echo(object):
-	"""simplified cmpv6+echo message"""
+	"""simplified icmp6+echo message"""
 
 	HEADER_LENGTH = 8
 	TEMPLATE = """
