@@ -43,4 +43,5 @@ The maximum frame rate is calculated using the minimum values of the following p
 
 Beside typical defense for synflooding `net.ipv4.tcp_syncookies`, applications
 are setting a listen backlog (`man 3 listen -- int listen(int sockfd, int
-backlog)`) which is also limited by kernel's `net.core.somaxconn
+backlog)`) which is also limited by kernel's `net.core.somaxconn`. Applies for
+monitoring/testing overloading tcp based applications such as webservers.

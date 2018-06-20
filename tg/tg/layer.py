@@ -10,6 +10,7 @@ import tg
 class Ethernet(object):
 	"""layer ethernet impl"""
 
+	HEADER_LENGTH = 14
 	TEMPLATE = """
 /* eth destination mac */		{eth_destination_mac},
 /* eth source mac */			{eth_source_mac},
@@ -45,20 +46,20 @@ class Ethernet(object):
 
 
 #====================================================================
-class Ipv4(object):
-	"""layer ipv4 impl"""
+class Ip4(object):
+	"""layer ip4 impl"""
 
 	HEADER_LENGTH = 20
 	TEMPLATE = """
-/* ipv4 version, ihl, tos */		0b01000101, 0,
-/* ipv4 total length */			c16({ip_total_length}),
-/* ipv4 ipid */				drnd(2),
-/* ipv4 flags, fragment offset */	0b01000000, 0,
-/* ipv4 ttl */				{ip_ttl},
-/* ipv4 protocol */			{ip_protocol},
-/* ipv4 checksum */			IP_CSUM_DEFAULT,
-/* ipv4 source ip */			{ip_source_address},
-/* ipv4 destination ip */		{ip_destination_address},
+/* ip4 version, ihl, tos */		0b01000101, 0,
+/* ip4 total length */			c16({ip4_total_length}),
+/* ip4 ipid */				drnd(2),
+/* ip4 flags, fragment offset */	0b01000000, 0,
+/* ip4 ttl */				{ip4_ttl},
+/* ip4 protocol */			{ip4_protocol},
+/* ip4 checksum */			IP_CSUM_DEFAULT,
+/* ip4 source ip */			{ip4_source_address},
+/* ip4 destination ip */		{ip4_destination_address},
 """
 
 
@@ -66,16 +67,16 @@ class Ipv4(object):
 	def parse_arguments(parser):
 		"""parse arguments"""
 
-		parser.add_argument("--ip_ttl", default=21)
-		parser.add_argument("--ip_source_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
-		parser.add_argument("--ip_destination_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
+		parser.add_argument("--ip4_ttl", default=21)
+		parser.add_argument("--ip4_source_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
+		parser.add_argument("--ip4_destination_address", default="self", help="eg. a.b.c.d|self|rnd|drnd")
 
 
 	@staticmethod
 	def process_fields(fields):
 		"""process input parameters to fields"""
 
-		def process_ip_address(fields, selector):
+		def process_ip4_address(fields, selector):
 			"""handle self, rnd, drnd cases to field values"""
 
 			if fields[selector] == "self":
@@ -87,23 +88,23 @@ class Ipv4(object):
 			fields[selector] = tg.utils.trafgen_format_ip(fields[selector])
 			return fields
 
-		fields = process_ip_address(fields, "ip_source_address")
-		fields = process_ip_address(fields, "ip_destination_address")
+		fields = process_ip4_address(fields, "ip4_source_address")
+		fields = process_ip4_address(fields, "ip4_destination_address")
 		return fields
 
 
 
 #====================================================================
 
-class Ipv6(object):
-	"""layer ipv6 impl"""
+class Ip6(object):
+	"""layer ip6 impl"""
 
 	HEADER_LENGTH = 40
 	TEMPLATE = """
-/* ipv6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, {ip6_flow_label},
-/* ipv6 payload length, ipv6 next header, ipv6 hop limit */	c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
-/* ipv6 source ip */						{ip6_source_address},
-/* ipv6 destination ip */					{ip6_destination_address},
+/* ip6 version, traffic class (ECN, DS), flow label */		0b01100000, 0, 0, {ip6_flow_label},
+/* ip6 payload length, next header, hop limit */		c16({ip6_payload_length}), {ip6_next_header}, {ip6_hop_limit},
+/* ip6 source ip */						{ip6_source_address},
+/* ip6 destination ip */					{ip6_destination_address},
 """
 
 
@@ -258,4 +259,84 @@ class Tcp(object):
 		fields = process_sa_number(fields, "tcp_acknowledgment_number")
 		fields = process_flags(fields, "tcp_flags")
 		fields = process_port(fields, "tcp_window_size")
+		return fields
+
+
+
+#====================================================================
+class IcmpEcho(object):
+	"""simplified icmp+echo message"""
+
+	HEADER_LENGTH = 8
+	TEMPLATE = """
+/* icmp type, icmp code */			8, 0,
+/* icmp checksum(ETH_HLEN+IP4_HLEN, END) */	csumicmp(34, {icmpecho_payload_end}),
+/* icmpecho type identifier */			{icmpecho_identifier},
+/* icmpecho type sequence */			{icmpecho_sequence_number},
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--icmpecho_identifier", default=0, help="eg. 123|rnd|drnd")
+		parser.add_argument("--icmpecho_sequence_number", default=0, help="eg. 123|rnd|drnd")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		def process_options_numbers(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(2)" % fields[selector]
+			else:
+				fields[selector] = "c16(%d)" % int(fields[selector])
+			return fields
+
+		fields = process_options_numbers(fields, "icmpecho_identifier")
+		fields = process_options_numbers(fields, "icmpecho_sequence_number")
+		return fields
+
+
+
+#====================================================================
+class Icmp6Echo(object):
+	"""simplified icmp6+echo message"""
+
+	HEADER_LENGTH = 8
+	TEMPLATE = """
+/* icmp6 type, icmp6 code */		128, 0,
+/* icmp6 checksum */			csumicmp6(14,54),
+/* icmp6echo type identifier */		{icmp6echo_identifier},
+/* icmp6echo type sequence */		{icmp6echo_sequence_number},
+"""
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--icmp6echo_identifier", default=0, help="eg. 123|rnd|drnd")
+		parser.add_argument("--icmp6echo_sequence_number", default=0, help="eg. 123|rnd|drnd")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process input parameters to fields"""
+
+		def process_options_numbers(fields, selector):
+			"""handle rnd, drnd cases to field values"""
+
+			if fields[selector] in ["rnd", "drnd"]:
+				fields[selector] = "%s(2)" % fields[selector]
+			else:
+				fields[selector] = "c16(%d)" % int(fields[selector])
+			return fields
+
+		fields = process_options_numbers(fields, "icmp6echo_identifier")
+		fields = process_options_numbers(fields, "icmp6echo_sequence_number")
 		return fields

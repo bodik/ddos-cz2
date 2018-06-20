@@ -30,12 +30,12 @@ random_mac() {
 }
 
 
-random_ipv4() {
+random_ip4() {
 	python -c "import random; print '.'.join([str(random.randint(0,255)) for x in range(4)])"
 }
 
 
-random_ipv6() {
+random_ip6() {
 	python -c "import random; print ':'.join(['%x'%random.randint(0,65025) for x in range(8)])"
 }
 
