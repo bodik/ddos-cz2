@@ -13,8 +13,7 @@ mkdir -p $BUILD_AREA
 cd $BUILD_AREA || exit 1
 
 if [ ! -d netsniff-ng ]; then
-	#git clone https://github.com/netsniff-ng/netsniff-ng
-	git clone https://github.com/bodik/netsniff-ng --branch feature-csumicmp6
+	git clone https://github.com/netsniff-ng/netsniff-ng
 	cd netsniff-ng
 else
 	cd netsniff-ng
