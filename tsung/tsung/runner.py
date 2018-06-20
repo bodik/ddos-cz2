@@ -19,7 +19,8 @@ class TsungTemplate(string.Template):
 class Runner(object):
 	"""executor holds code to execute the generator"""
 
-        CLIENT_DEF = "\t<client host=\"%s\" maxusers=\"10000\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
+        CLIENT_CONFIG = "\t<client host=\"%s\" maxusers=\"10000\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
+        TSUNG_BIN = "/opt/tsung/bin/tsung"
 
 	def __init__(self, fields):
 		"""initialize fields, run all layers postprocessors, generator specific postprocessing"""
@@ -27,36 +28,42 @@ class Runner(object):
                 self.fields = fields
 
 		# generic fields
-		self.fields["tsung_path"] = os.path.dirname(os.path.realpath(sys.argv[0]))
-		if not fields["dev"]:
-		    fields["dev"] = tsung.utils.default_output_interface()
+		self.fields['tsung_path'] = os.path.dirname(os.path.realpath(sys.argv[0]))
+		if not fields['dev']:
+		    fields['dev'] = tsung.utils.default_output_interface()
 
 		# timings
-		if self.fields["time"]:
-		    self.fields["time"] = tsung.utils.parse_time(str(self.fields["time"]))
+		if self.fields['time']:
+		    self.fields['time'] = tsung.utils.parse_time(str(self.fields['time']))
 
-
+                # content and method check
                 if self.fields['content'] and self.fields['method'] == 'GET':
                     print "ERROR: HTTP GET method not supports content in request, remove --data option."
                     sys.exit(1)
 
+                # custom template
+                if not self.fields['template']:
+                    self.fields['template'] = "%s/templates/template.xml" % (self.fields['tsung_path'])
 
 	def compile(self):
-		"""replace templateo for tsung"""
+		"""replace template for tsung"""
                 #read template from file, fill with args
 
                 secure = "ssl" if self.fields['ssl'] else "tcp"
                 
                 clients = ""
                 for cl in self.fields['clients'].split(','):
-                    clients += self.CLIENT_DEF % (cl, self.fields['dev'])
+                    clients += self.CLIENT_CONFIG % (cl, self.fields['dev'])
 
                 content = ""
-                if self.fields['content']:
+                if self.fields['content'].startswith('file://'):
+                    with open(self.fields['content'][7:], 'r') as contentfile:
+                        content = cgi.escape(contentfile.read())
+                else:
                     content = cgi.escape(self.fields['content'])
 
                 res = ""
-                with open('/opt/ddos-cz2/tsung/template.xml', 'r') as template:
+                with open(self.fields['template'], 'r') as template:
                       data = template.read()
                       t = TsungTemplate(data)
                       d = { 'host'    : self.fields['host'],
@@ -83,13 +90,14 @@ class Runner(object):
 		ftmp.write(self.compile())
 		ftmp.close()
 
-                print ftmp_name
+                logging.debug(ftmp_name)
 
 		# run tsung
 		#tsung_bin = "%s/bin/tsung" % os.path.dirname(os.path.realpath(sys.argv[0]))
-                tsung_bin = "/opt/tsung/bin/tsung"
-
-                cmd = [tsung_bin, "-f", ftmp_name, "start"]
+                if self.fields['logdir']:
+                    cmd = [self.TSUNG_BIN, "-f", ftmp_name, "-l", self.fields['logdir'], "start"]
+                else:
+                    cmd = [self.TSUNG_BIN, "-f", ftmp_name, "start"]
 
 		logging.debug(cmd)
 		try:
@@ -128,11 +136,11 @@ class TimedExecutor(object):
 				logging.debug(process_stdout.strip())
 			if process_stderr:
 				logging.error(process_stderr.strip())
-			if self.process.returncode != 0:
+			if self.process.returncode != 0 and self.process.returncode != -15:
 				logging.error("exit code %s", self.process.returncode)
 		except (Exception, KeyboardInterrupt) as e:
 			self.terminate_process()
-			if self.process.returncode != 0:
+			if self.process.returncode != 0 and self.process.returncode != -15:
 				logging.error("exit code %s", self.process.returncode)
 			raise e
 
