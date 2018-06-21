@@ -62,6 +62,10 @@ class Runner(object):
                 else:
                     content = cgi.escape(self.fields['content'])
 
+                uri = self.fields['uri']
+                if not self.fields['uri'].startswith("/"):
+                    uri = "/%s" % (self.fields['uri'])
+
                 res = ""
                 with open(self.fields['template'], 'r') as template:
                       data = template.read()
@@ -72,7 +76,7 @@ class Runner(object):
                             'secure'  : secure,
                             'users'   : self.fields['users'],
                             'requests': self.fields['requests'],
-                            'uri'     : self.fields['uri'],
+                            'uri'     : uri,
                             'method'  : self.fields['method'],
                             'content' : content
                           }
