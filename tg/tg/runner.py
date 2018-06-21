@@ -126,6 +126,7 @@ class TimedExecutor(object):
 
 
 	def execute_once(self, cmd):
+		"""execute once"""
 		try:
 			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 			(process_stdout, process_stderr) = self.process.communicate()
@@ -168,6 +169,8 @@ class TimedExecutor(object):
 
 
 	def terminate_process(self):
+		"""terminate process"""
+
 		self.process.poll()
 		if self.process.returncode is None:
 			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)

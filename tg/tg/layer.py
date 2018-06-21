@@ -247,6 +247,8 @@ class Tcp(object):
 			return fields
 
 		def process_flags(fields, selector):
+			"""handle tcp flags from argument"""
+
 			tran = { \
 				"C": "TCP_FLAG_CWR", "E": "TCP_FLAG_ECE", "U": "TCP_FLAG_URG", "A": "TCP_FLAG_ACK",
 				"P": "TCP_FLAG_PSH", "R": "TCP_FLAG_RST", "S": "TCP_FLAG_SYN", "F": "TCP_FLAG_FIN"}
