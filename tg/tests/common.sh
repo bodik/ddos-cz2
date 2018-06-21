@@ -47,6 +47,7 @@ run_and_display() {
 	echo "INFO: test for ${GENERATOR} ${TESTID_FILE} ${TESTID_FILE_DISPLAYED}"
 	${BASEDIR}/tg2 ${GENERATOR} --debug --dev ${TESTID_FILE} $@ || rreturn $? "$0 tg2"
 	${BASEDIR}/bin/scapy_display.py ${TESTID_FILE} > ${TESTID_FILE_DISPLAYED} || rreturn $? "$0 scapy_display.py"
+	cat ${TESTID_FILE_DISPLAYED}
 }
 
 
