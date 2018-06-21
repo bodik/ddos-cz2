@@ -14,20 +14,22 @@ class RawConfig(object):
 """
 	LAYERS = [TEMPLATE]
 
-	
+
 	@staticmethod
 	def parse_arguments(parser):
 		"""parse arguments"""
-	
+
 		parser.add_argument("--filename", required=True, help="full payload filename")
 
 
 	@staticmethod
 	def process_fields(fields):
+		"""process arguments to fileds"""
+
 		with open(fields["filename"], "r") as ftmp:
 			fields["rawconfig"] = ftmp.read()
 		return fields
-	
+
 
 
 #====================================================================
@@ -169,6 +171,8 @@ class IcmpEcho(object):
 		"""process arguments to fileds"""
 
 		def process_icmpecho_data(fields, selector):
+			"""validate field"""
+
 			if (len(fields[selector]) % 2) != 0:
 				# naive (no automatic padding) csumicmp/csumip/calc_csum impl, requires data to by 16b aligned
 				raise ValueError("invalid data (alignment error)")

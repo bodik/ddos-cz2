@@ -104,8 +104,7 @@ def trafgen_format_ip(ipaddr):
 		return ipaddr.replace(".", ",")
 
 	if ipaddr.count(":") >= 2:
-		tmp = ipaddress.IPv6Address(unicode(ipaddr, "utf-8")).exploded.split(":")
-		return ",".join(map(lambda x: "c16(0x%s)"%x, tmp))
+		return ",".join(["c16(0x%s)" % hextet for hextet in ipaddress.IPv6Address(unicode(ipaddr, "utf-8")).exploded.split(":")])
 
 	raise ValueError("invalid ipaddr")
 
