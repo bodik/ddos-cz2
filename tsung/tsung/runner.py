@@ -14,74 +14,72 @@ import string
 import cgi
 
 class TsungTemplate(string.Template):
-        delimiter = '__TSUNG_'
+	delimiter = '__TSUNG_'
 
 class Runner(object):
 	"""executor holds code to execute the generator"""
 
-        CLIENT_CONFIG = "\t<client host=\"%s\" maxusers=\"10000\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
-        TSUNG_BIN = "/opt/tsung/bin/tsung"
+	CLIENT_CONFIG = "\t<client host=\"%s\" maxusers=\"10000\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
+	TSUNG_BIN = "/opt/tsung/bin/tsung"
 
 	def __init__(self, fields):
 		"""initialize fields, run all layers postprocessors, generator specific postprocessing"""
-		
-                self.fields = fields
+		self.fields = fields
 
 		# generic fields
 		self.fields['tsung_path'] = os.path.dirname(os.path.realpath(sys.argv[0]))
 		if not fields['dev']:
-		    fields['dev'] = tsung.utils.default_output_interface()
+			fields['dev'] = tsung.utils.default_output_interface()
 
 		# timings
 		if self.fields['time']:
-		    self.fields['time'] = tsung.utils.parse_time(str(self.fields['time']))
+			self.fields['time'] = tsung.utils.parse_time(str(self.fields['time']))
 
-                # content and method check
-                if self.fields['content'] and self.fields['method'] == 'GET':
-                    print "ERROR: HTTP GET method not supports content in request, remove --data option."
-                    sys.exit(1)
+		# content and method check
+		if self.fields['content'] and self.fields['method'] == 'GET':
+			print "ERROR: HTTP GET method not supports content in request, remove --data option."
+			sys.exit(1)
 
-                # custom template
-                if not self.fields['template']:
-                    self.fields['template'] = "%s/templates/template.xml" % (self.fields['tsung_path'])
+		# custom template
+		if not self.fields['template']:
+			self.fields['template'] = "%s/templates/template.xml" % (self.fields['tsung_path'])
 
 	def compile(self):
 		"""replace template for tsung"""
-                #read template from file, fill with args
 
-                secure = "ssl" if self.fields['ssl'] else "tcp"
-                
-                clients = ""
-                for cl in self.fields['clients'].split(','):
-                    clients += self.CLIENT_CONFIG % (cl, self.fields['dev'])
+		secure = "ssl" if self.fields['ssl'] else "tcp"
 
-                content = ""
-                if self.fields['content'].startswith('file://'):
-                    with open(self.fields['content'][7:], 'r') as contentfile:
-                        content = cgi.escape(contentfile.read())
-                else:
-                    content = cgi.escape(self.fields['content'])
+		clients = ""
+		for client in self.fields['clients'].split(','):
+			clients += self.CLIENT_CONFIG % (client, self.fields['dev'])
 
-                uri = self.fields['uri']
-                if not self.fields['uri'].startswith("/"):
-                    uri = "/%s" % (self.fields['uri'])
+		content = ""
+		if self.fields['content'].startswith('file://'):
+			with open(self.fields['content'][7:], 'r') as contentfile:
+				content = cgi.escape(contentfile.read())
+		else:
+			content = cgi.escape(self.fields['content'])
 
-                res = ""
-                with open(self.fields['template'], 'r') as template:
-                      data = template.read()
-                      t = TsungTemplate(data)
-                      d = { 'host'    : self.fields['host'],
-                            'port'    : self.fields['port'],
-                            'clients' : clients,
-                            'secure'  : secure,
-                            'users'   : self.fields['users'],
-                            'requests': self.fields['requests'],
-                            'uri'     : uri,
-                            'method'  : self.fields['method'],
-                            'content' : content
-                          }
+		uri = self.fields['uri']
+		if not self.fields['uri'].startswith("/"):
+			uri = "/%s" % (self.fields['uri'])
 
-                      res = t.safe_substitute(d)
+		res = ""
+		with open(self.fields['template'], 'r') as temp_file:
+			data = temp_file.read()
+			template = TsungTemplate(data)
+			values = { \
+				'host': self.fields['host'],
+				'port': self.fields['port'],
+				'clients' : clients,
+				'secure'  : secure,
+				'users'   : self.fields['users'],
+				'requests': self.fields['requests'],
+				'uri': uri,
+				'method'  : self.fields['method'],
+				'content' : content}
+
+			res = template.safe_substitute(values)
 
 		return res
 
@@ -94,14 +92,14 @@ class Runner(object):
 		ftmp.write(self.compile())
 		ftmp.close()
 
-                logging.debug(ftmp_name)
+		logging.debug(ftmp_name)
 
 		# run tsung
 		#tsung_bin = "%s/bin/tsung" % os.path.dirname(os.path.realpath(sys.argv[0]))
-                if self.fields['logdir']:
-                    cmd = [self.TSUNG_BIN, "-f", ftmp_name, "-l", self.fields['logdir'], "start"]
-                else:
-                    cmd = [self.TSUNG_BIN, "-f", ftmp_name, "start"]
+		if self.fields['logdir']:
+			cmd = [self.TSUNG_BIN, "-f", ftmp_name, "-l", self.fields['logdir'], "start"]
+		else:
+			cmd = [self.TSUNG_BIN, "-f", ftmp_name, "start"]
 
 		logging.debug(cmd)
 		try:
