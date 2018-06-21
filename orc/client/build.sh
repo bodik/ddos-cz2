@@ -1,6 +1,6 @@
 #!/bin/sh
 
-apt-get install python3-virtualenv python3-pip
+apt-get install python-virtualenv python3-virtualenv python3-pip
 
 virtualenv -p python3 env
 . env/bin/activate

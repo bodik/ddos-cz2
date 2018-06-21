@@ -1,14 +1,15 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 import asyncio
 import autobahn.asyncio.wamp
 import json
 import logging
 import os
+import time
+import txaio
 import sys
 
-#logger = logging.getLogger()
-#logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(levelname)s %(message)s')
+txaio.use_asyncio()
 
 
 class Slave(autobahn.asyncio.wamp.ApplicationSession):
@@ -29,8 +30,24 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 		asyncio.get_event_loop().stop()
 
 
-if __name__ == "__main__":
+def main():
+	# args
 	url = os.environ.get("ORC_ROUTER", u"ws://127.0.0.1:56000/ws")
 	realm = u"orc1"
-	runner = autobahn.asyncio.wamp.ApplicationRunner(url, realm)
-	runner.run(Slave, log_level='debug')
+	txaio.start_logging(level="debug")
+
+	shutdown = False
+	while not shutdown:
+		try:
+			runner = autobahn.asyncio.wamp.ApplicationRunner(url, realm)
+			runner.run(Slave, log_level="debug")
+		except Exception as e:
+			logging.error(e)
+			time.sleep(1)
+		except KeyboardInterrupt:
+			logging.info("aborted by user")
+			shutdown = True
+
+
+if __name__ == "__main__":
+	sys.exit(main())

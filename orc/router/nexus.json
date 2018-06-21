@@ -1,6 +1,6 @@
 {
 	"websocket": {
-		"address": ":8080",
+		"address": ":56000",
 		"cert_file": "",
 		"key_file": "",
 		"enable_compression": false,
