@@ -7,6 +7,7 @@ import logging
 import os
 import time
 import txaio
+import signal
 import sys
 
 txaio.use_asyncio()
@@ -39,14 +40,31 @@ def main():
 	shutdown = False
 	while not shutdown:
 		try:
+			## code mainly taken from ApplicationRunner but can handle repeating router failures/disconnects
+			loop = asyncio.get_event_loop()
+			if loop.is_closed():
+				asyncio.set_event_loop(asyncio.new_event_loop())
+				loop = asyncio.get_event_loop()
+
 			runner = autobahn.asyncio.wamp.ApplicationRunner(url, realm)
-			runner.run(Slave, log_level="debug")
+			coro = runner.run(Slave, start_loop=False, log_level="debug")
+			(transport, protocol) = loop.run_until_complete(coro)
+			loop.add_signal_handler(signal.SIGTERM, loop.stop)
+			try:
+				loop.run_forever()
+			except KeyboardInterrupt:
+				logging.info("aborted by user")
+				shutdown = True
+			if protocol._session:
+				loop.run_until_complete(protocol._session.leave())
+			loop.close()
+
 		except Exception as e:
 			logging.error(e)
-			time.sleep(1)
-		except KeyboardInterrupt:
-			logging.info("aborted by user")
-			shutdown = True
+			try:
+				time.sleep(1)
+			except KeyboardInterrupt:
+				shutdown = True
 
 
 if __name__ == "__main__":
