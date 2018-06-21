@@ -5,4 +5,4 @@ if [ ! -d .git ]; then
 else
         git pull
 fi
-git remote set-url --push origin ssh://flab@esb.metacentrum.cz:/data/ddos-cz2.git
+git remote set-url --push origin ssh://flab@rsyslog.metacentrum.cz:/data/ddos-cz2.git
