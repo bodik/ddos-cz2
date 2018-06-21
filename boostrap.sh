@@ -1,8 +1,8 @@
 #!/bin/sh
 
 if [ ! -d .git ]; then
-	git clone https://haas.cesnet.cz/ddos-cz2.git
+        git clone https://rsyslog.metacentrum.cz/ddos-cz2.git
 else
-	git pull
+        git pull
 fi
-git remote set-url --push origin ssh://dev@haas.cesnet.cz:/data/ddos-cz2.git
+git remote set-url --push origin ssh://flab@esb.metacentrum.cz:/data/ddos-cz2.git
