@@ -1,0 +1,13 @@
+[FORMAT]
+max-line-length=150
+indent-string=\t
+indent-after-paren=1
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,e
+
+[DESIGN]
+max-args=6
+
+[EXCEPTIONS]
+overgeneral-exceptions=
