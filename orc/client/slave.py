@@ -4,14 +4,17 @@ import argparse
 import asyncio
 import autobahn.asyncio.wamp
 import autobahn.wamp.types
+import concurrent.futures
 import json
 import jsonschema
 import logging
+import netstat
 import os
 import time
 import txaio
 import signal
 import sys
+import uuid
 
 txaio.use_asyncio()
 
@@ -22,10 +25,15 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 	def __init__(self, *args, **kwargs):
 		super(Slave, self).__init__(*args, **kwargs)
 	
-		self.received = 0	
-		self.msg_schema = {}
+		self.received = 0
+		self.msgSchema = {}
+
+		self.loop = asyncio.get_event_loop()
+		self.netstatThread = True
+
 		if "msg_schema" in self.config.extra:
-			self.msg_schema = self.config.extra["msg_schema"]
+			self.msgSchema = self.config.extra["msgSchema"]
+
 
 
 	async def onJoin(self, details):
@@ -35,13 +43,16 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 		self.log.info("{cls}: joined {details}", cls=self.__class__.__name__, details=details)
 		await self.subscribe(on_message, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
 
+		self.loop.run_in_executor(None, self.netstatTask)
+
+
 	def onDisconnect(self):
 		asyncio.get_event_loop().stop()
 
 
 	def processMessage(self, msg):
 		try:
-			jsonschema.validate(msg, self.msg_schema)
+			jsonschema.validate(msg, self.msgSchema)
 			valid = True
 		except jsonschema.exceptions.ValidationError:
 			valid = False
@@ -50,6 +61,11 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 		self.received += 1
 		if self.received > 30:
 			self.leave()
+
+	def netstatTask(self):
+		while self.netstatThread:
+			msg = {"Id": str(uuid.uuid4()), "Type": "netstat", "Message": netstat.stats("eth0", 1)}
+			self.publish(u"ddos-cz2.slaves", msg=msg, options=autobahn.wamp.types.PublishOptions(exclude_me=False))
 
 
 
