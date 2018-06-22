@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import autobahn.asyncio.wamp
 import autobahn.wamp.types
-import concurrent.futures
 import json
 import jsonschema
 import logging
@@ -14,27 +13,19 @@ import time
 import txaio
 import signal
 import sys
+import threading
 import uuid
 
 txaio.use_asyncio()
 
 
-class Slave(autobahn.asyncio.wamp.ApplicationSession):
-	"""slave orc"""
+class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 
 	def __init__(self, *args, **kwargs):
-		super(Slave, self).__init__(*args, **kwargs)
-	
+		super(CommunicatorWampSession, self).__init__(*args, **kwargs)
 		self.received = 0
-		self.msgSchema = {}
-
-		self.loop = asyncio.get_event_loop()
-		self.netstatThread = True
-
-		if "msg_schema" in self.config.extra:
-			self.msgSchema = self.config.extra["msgSchema"]
-
-
+		self.msgSchema = self.config.extra["msgSchema"]
+		self.communicatorThread = self.config.extra["communicatorThread"]
 
 	async def onJoin(self, details):
 		def on_message(msg, details):
@@ -43,12 +34,8 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 		self.log.info("{cls}: joined {details}", cls=self.__class__.__name__, details=details)
 		await self.subscribe(on_message, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
 
-		self.loop.run_in_executor(None, self.netstatTask)
-
-
 	def onDisconnect(self):
 		asyncio.get_event_loop().stop()
-
 
 	def processMessage(self, msg):
 		try:
@@ -62,10 +49,82 @@ class Slave(autobahn.asyncio.wamp.ApplicationSession):
 		if self.received > 30:
 			self.leave()
 
-	def netstatTask(self):
-		while self.netstatThread:
-			msg = {"Id": str(uuid.uuid4()), "Type": "netstat", "Message": netstat.stats("eth0", 1)}
-			self.publish(u"ddos-cz2.slaves", msg=msg, options=autobahn.wamp.types.PublishOptions(exclude_me=False))
+
+class CommunicatorThread(threading.Thread):
+	def __init__(self, server, realm, msgSchema):
+		threading.Thread.__init__(self)
+		self.setDaemon(True)
+		self.name = "communicator"
+
+		# mandatory asyncio
+		self.loop = None
+		self.logLevel = "debug"
+
+		# custom handling reconnects
+		self.shutdown = False
+
+		# custom arguments
+		self.server = server
+		self.realm = realm
+		self.msgSchema = msgSchema
+
+		# ipc
+		self.inbox = []
+		self.outbox = []
+
+
+	def run(self):
+		logging.info("start %s" % self.name)
+
+		self.loop = asyncio.new_event_loop()
+		asyncio.set_event_loop(self.loop)
+
+		self.shutdown = False
+		while not self.shutdown:
+			try:
+				## code mainly taken from ApplicationRunner but can handle repeating router failures/disconnects
+				self.loop = asyncio.get_event_loop()
+				if self.loop.is_closed():
+				        asyncio.set_event_loop(asyncio.new_event_loop())
+				        self.loop = asyncio.get_event_loop()
+				runner = autobahn.asyncio.wamp.ApplicationRunner(self.server, realm=self.realm, extra={"communicatorThread": self, "msgSchema": self.msgSchema})
+				coro = runner.run(CommunicatorWampSession, start_loop=False, log_level=self.logLevel)
+				(transport, protocol) = self.loop.run_until_complete(coro)
+				## must not be handled by thread but only by main itself
+				###self.loop.add_signal_handler(signal.SIGTERM, self.loop.stop)
+				try:
+				        self.loop.run_forever()
+				except KeyboardInterrupt:
+				        logging.info("aborted by user")
+				        shutdown = True
+				if protocol._session:
+				        self.loop.run_until_complete(protocol._session.leave())
+				self.loop.close()
+
+			except Exception as e:
+				logging.error(e)
+				try:
+					time.sleep(1)
+				except KeyboardInterrupt:
+					shutdown = True
+
+		logging.info("end %s" % self.name)
+
+	def teardown(self):
+		"""called from external objects to singal gracefull teardown request"""
+
+		logging.info("shutting down %s", self.name)
+		self.shutdown = True
+		self.loop.stop()
+
+	def send(self, msg):
+		self.outbox.append(msg)
+
+	def recv(self, msg):
+		return self.inbox.pop(msg)
+
+
+
 
 
 
@@ -82,6 +141,18 @@ def parse_arguments():
 	return parser.parse_args()
 
 
+def teardown(signum, frame):
+	logging.info("shutdown start")
+
+	# shutdown all running threads without passing references through global variables
+	for thread in threading.enumerate():
+		if hasattr(thread, "teardown") and callable(getattr(thread, "teardown")):
+			thread.teardown()
+			thread.join(1)
+
+	logging.info("shutdown exit")
+
+
 def main():
 	# args
 	"""main"""
@@ -93,37 +164,11 @@ def main():
 	# startup
 	txaio.start_logging(level=log_level)
 	
-	with open(args.schema, "r") as ftmp:
-		msg_schema = json.loads(ftmp.read())
-
-	shutdown = False
-	while not shutdown:
-		try:
-			## code mainly taken from ApplicationRunner but can handle repeating router failures/disconnects
-			loop = asyncio.get_event_loop()
-			if loop.is_closed():
-				asyncio.set_event_loop(asyncio.new_event_loop())
-				loop = asyncio.get_event_loop()
-
-			runner = autobahn.asyncio.wamp.ApplicationRunner(args.server, realm=args.realm, extra={"msg_schema": msg_schema})
-			coro = runner.run(Slave, start_loop=False, log_level=log_level)
-			(transport, protocol) = loop.run_until_complete(coro)
-			loop.add_signal_handler(signal.SIGTERM, loop.stop)
-			try:
-				loop.run_forever()
-			except KeyboardInterrupt:
-				logging.info("aborted by user")
-				shutdown = True
-			if protocol._session:
-				loop.run_until_complete(protocol._session.leave())
-			loop.close()
-
-		except Exception as e:
-			logging.error(e)
-			try:
-				time.sleep(1)
-			except KeyboardInterrupt:
-				shutdown = True
+	signal.signal(signal.SIGTERM, teardown)
+	signal.signal(signal.SIGINT, teardown)
+	thread_communicator = CommunicatorThread(args.server, args.realm, {})
+	thread_communicator.start()
+	thread_communicator.join()
 
 
 if __name__ == "__main__":
