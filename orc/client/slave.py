@@ -16,8 +16,6 @@ import sys
 import threading
 import uuid
 
-txaio.use_asyncio()
-
 
 class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 
@@ -51,15 +49,15 @@ class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 
 
 class CommunicatorThread(threading.Thread):
-	def __init__(self, server, realm, msg_schema, log_level="info"):
+
+	def __init__(self, server, realm, msg_schema):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
-		self.log = txaio.make_logger() #caveat: mind the semantic slightly differs from python's standard logging
+		self.log = logging.getLogger()
 
 		# mandatory asyncio
 		self.loop = None
-		self.log_level = log_level
 
 		# comms
 		self.shutdown = False
@@ -68,13 +66,9 @@ class CommunicatorThread(threading.Thread):
 		with open(msg_schema, "r") as ftmp:
 			self.msg_schema = json.loads(ftmp.read())
 
-		# ipc
-		self.inbox = []
-		self.outbox = []
-
 
 	def run(self):
-		self.log.info("start %s" % self.name)
+		self.log.info("start %s", self.name)
 
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
@@ -88,7 +82,7 @@ class CommunicatorThread(threading.Thread):
 				        asyncio.set_event_loop(asyncio.new_event_loop())
 				        self.loop = asyncio.get_event_loop()
 				runner = autobahn.asyncio.wamp.ApplicationRunner(self.server, realm=self.realm, extra={"communicator_thread": self, "msg_schema": self.msg_schema})
-				coro = runner.run(CommunicatorWampSession, start_loop=False, log_level=self.log_level)
+				coro = runner.run(CommunicatorWampSession, start_loop=False)
 				(transport, protocol) = self.loop.run_until_complete(coro)
 				## must not be handled by thread but only by main itself
 				###self.loop.add_signal_handler(signal.SIGTERM, self.loop.stop)
@@ -108,12 +102,12 @@ class CommunicatorThread(threading.Thread):
 				except KeyboardInterrupt:
 					self.shutdown = True
 
-		self.log.info("end %s" % self.name)
+		self.log.info("end %s", self.name)
 
 	def teardown(self):
 		"""called from external objects to singal gracefull teardown request"""
 
-		self.log.info("shutting down %s" % self.name)
+		self.log.info("shutting down %s", self.name)
 		self.shutdown = True
 		self.loop.stop()
 
@@ -143,7 +137,8 @@ def parse_arguments():
 
 
 def teardown(signum, frame):
-	logging.info("shutdown start")
+	logger = logging.getLogger()
+	logger.info("shutdown start")
 
 	# shutdown all running threads without passing references through global variables
 	for thread in threading.enumerate():
@@ -151,24 +146,28 @@ def teardown(signum, frame):
 			thread.teardown()
 			thread.join(1)
 
-	logging.info("shutdown exit")
+	logger.info("shutdown exit")
 
 
 def main():
 	"""main"""
 
-
 	# args
-	log_level = "info"
 	args = parse_arguments()
+
+	# txaio startup messes up standard logging
+	logger = logging.getLogger()
 	if args.debug:
-		log_level = "debug"
-	txaio.start_logging(level=log_level)
+		logger.setLevel(logging.DEBUG)
+	logger.handlers = []
+	txaio.use_asyncio()
+	txaio.start_logging(level=logging.getLevelName(logger.getEffectiveLevel()).lower())
+
 
 	# startup
 	signal.signal(signal.SIGTERM, teardown)
 	signal.signal(signal.SIGINT, teardown)
-	thread_communicator = CommunicatorThread(args.server, args.realm, args.schema, log_level)
+	thread_communicator = CommunicatorThread(args.server, args.realm, args.schema)
 	thread_communicator.start()
 
 	# there will be a loop
