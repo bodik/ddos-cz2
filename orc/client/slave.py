@@ -27,7 +27,7 @@ class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 
 	async def onJoin(self, details):
 		def on_message(msg, details):
-			self.processMessage(msg)
+			self.receiveMessage(msg)
 
 		self.log.info("{cls}: joined {details}", cls=self.__class__.__name__, details=details)
 		await self.subscribe(on_message, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
@@ -35,7 +35,7 @@ class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 	def onDisconnect(self):
 		asyncio.get_event_loop().stop()
 
-	def processMessage(self, msg):
+	def receiveMessage(self, msg):
 		try:
 			jsonschema.validate(msg, self.msg_schema)
 		except jsonschema.exceptions.ValidationError:
@@ -160,7 +160,6 @@ def main():
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 	logger.handlers = []
-	txaio.use_asyncio()
 	txaio.start_logging(level=logging.getLevelName(logger.getEffectiveLevel()).lower())
 
 
