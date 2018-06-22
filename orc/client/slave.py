@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
 import asyncio
 import autobahn.asyncio.wamp
+import autobahn.wamp.types
 import json
+import jsonschema
 import logging
 import os
 import time
@@ -15,27 +18,67 @@ txaio.use_asyncio()
 
 class Slave(autobahn.asyncio.wamp.ApplicationSession):
 	"""slave orc"""
-	received = 0
+
+	def __init__(self, *args, **kwargs):
+		super(Slave, self).__init__(*args, **kwargs)
+	
+		self.received = 0	
+		self.msg_schema = {}
+		if "msg_schema" in self.config.extra:
+			self.msg_schema = self.config.extra["msg_schema"]
+
 
 	async def onJoin(self, details):
+		def on_message(msg, details):
+			self.processMessage(msg)
 
-		def on_message(msg):
-			self.log.debug("{cls}: got event {msg}", cls=self.__class__.__name__, msg=msg)
-			self.received += 1
-			if self.received > 5:
-				self.leave()
-
-		await self.subscribe(on_message, u"ddos-cz2.slaves")
+		self.log.info("{cls}: joined {details}", cls=self.__class__.__name__, details=details)
+		await self.subscribe(on_message, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
 
 	def onDisconnect(self):
 		asyncio.get_event_loop().stop()
 
 
+	def processMessage(self, msg):
+		try:
+			jsonschema.validate(msg, self.msg_schema)
+			valid = True
+		except jsonschema.exceptions.ValidationError:
+			valid = False
+		self.log.info("{cls}: {valid} message {msg}", cls=self.__class__.__name__, valid=valid, msg=msg)
+
+		self.received += 1
+		if self.received > 30:
+			self.leave()
+
+
+
+def parse_arguments():
+	"""parse arguments"""
+
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--server", default="ws://127.0.0.1:56000/")
+	parser.add_argument("--realm", default="orc1")
+	parser.add_argument("--schema", default="orcish.schema")
+
+	parser.add_argument("--debug", action="store_true")
+
+	return parser.parse_args()
+
+
 def main():
 	# args
-	url = os.environ.get("ORC_ROUTER", u"ws://127.0.0.1:56000/ws")
-	realm = u"orc1"
-	txaio.start_logging(level="debug")
+	"""main"""
+	log_level = "info"
+	args = parse_arguments()
+	if args.debug:
+		log_level = "debug"
+
+	# startup
+	txaio.start_logging(level=log_level)
+	
+	with open(args.schema, "r") as ftmp:
+		msg_schema = json.loads(ftmp.read())
 
 	shutdown = False
 	while not shutdown:
@@ -46,8 +89,8 @@ def main():
 				asyncio.set_event_loop(asyncio.new_event_loop())
 				loop = asyncio.get_event_loop()
 
-			runner = autobahn.asyncio.wamp.ApplicationRunner(url, realm)
-			coro = runner.run(Slave, start_loop=False, log_level="debug")
+			runner = autobahn.asyncio.wamp.ApplicationRunner(args.server, realm=args.realm, extra={"msg_schema": msg_schema})
+			coro = runner.run(Slave, start_loop=False, log_level=log_level)
 			(transport, protocol) = loop.run_until_complete(coro)
 			loop.add_signal_handler(signal.SIGTERM, loop.stop)
 			try:

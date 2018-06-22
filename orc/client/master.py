@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import asyncio
+import autobahn.asyncio.wamp
+import autobahn.wamp.types
 import logging
 import random
 import os
 import sys
-import autobahn.wamp.types
-import autobahn.asyncio.wamp
+import uuid
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='%(levelname)s %(message)s')
@@ -22,6 +23,12 @@ class Master(autobahn.asyncio.wamp.ApplicationSession):
 			logger.debug("publish: ddos-cz2.slaves")
 			self.publish(u"ddos-cz2.slaves", msg=obj)
 			counter += 1
+
+			obj = {"Id": str(uuid.uuid4()), "Type": "test"}
+			logger.debug("publish: ddos-cz2.slaves")
+			self.publish(u"ddos-cz2.slaves", msg=obj)
+			counter += 1
+
 			await asyncio.sleep(1)
 
 
