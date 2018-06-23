@@ -48,61 +48,119 @@ class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
 			self.leave()
 
 
+
 class CommunicatorThread(threading.Thread):
 
-	def __init__(self, server, realm, msg_schema):
+	def __init__(self, url, realm, msg_schema):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
 		self.log = logging.getLogger()
 
-		# mandatory asyncio
-		self.loop = None
-
-		# comms
-		self.shutdown = False
-		self.server = server
-		self.realm = realm
+		# communicator
 		with open(msg_schema, "r") as ftmp:
 			self.msg_schema = json.loads(ftmp.read())
+		self.shutdown = False
+
+		# asyncio
+		self.loop = None
+
+		# autobahn config and session
+		self.session = None
+		self.url = url
+		self.realm = realm
+		self.ssl = None
+		self.extra = {"communicator_thread": self, "msg_schema": self.msg_schema}
 
 
 	def run(self):
 		self.log.info("start %s", self.name)
 
+		# setup loop for current thread
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
 
-		self.shutdown = False
+		# loop runner/reconnect until shutting down
 		while not self.shutdown:
 			try:
-				## code mainly taken from ApplicationRunner but can handle repeating router failures/disconnects
-				self.loop = asyncio.get_event_loop()
-				if self.loop.is_closed():
-				        asyncio.set_event_loop(asyncio.new_event_loop())
-				        self.loop = asyncio.get_event_loop()
-				runner = autobahn.asyncio.wamp.ApplicationRunner(self.server, realm=self.realm, extra={"communicator_thread": self, "msg_schema": self.msg_schema})
-				coro = runner.run(CommunicatorWampSession, start_loop=False)
-				(transport, protocol) = self.loop.run_until_complete(coro)
-				## must not be handled by thread but only by main itself
-				###self.loop.add_signal_handler(signal.SIGTERM, self.loop.stop)
-				try:
-				        self.loop.run_forever()
-				except KeyboardInterrupt:
-				        self.log.info("aborted by user")
-				        self.shutdown = True
-				if protocol._session:
-				        self.loop.run_until_complete(protocol._session.leave())
-				self.loop.close()
-
+				self.applicationRunner()
 			except Exception as e:
 				self.log.error(e)
 				try:
 					time.sleep(1)
 				except KeyboardInterrupt:
+					self.log.info("aborted by user")
 					self.shutdown = True
 
 		self.log.info("end %s", self.name)
+
+	def applicationRunner(self):
+		"""application runner taken from autobahn.asyncio.wamp to have own session object"""
+		# runner is reimplemented for 2 main reasons:
+		# 	a) having callable session within thread/object, it might be injected into runner (make attr), but
+		# 	b) handling KeyboardInterrupt requires external loop anyway
+
+		# session
+		cfg = autobahn.wamp.types.ComponentConfig(self.realm, self.extra)
+		self.session = CommunicatorWampSession(cfg)
+
+		# transport factory
+		isSecure, host, port, resource, path, params = autobahn.websocket.util.parse_url(self.url)
+		transport_factory = autobahn.asyncio.websocket.WampWebSocketClientFactory(self.session, url=self.url, serializers=None, proxy=None, headers=None)
+
+		# connection options
+		offers = [autobahn.websocket.compress.PerMessageDeflateOffer()]
+		def accept(response):
+			if isinstance(response, autobahn.websocket.compress.PerMessageDeflateResponse):
+				return autobahn.websocket.compress.PerMessageDeflateResponseAccept(response)
+		transport_factory.setProtocolOptions( \
+			maxFramePayloadSize=1048576,
+			maxMessagePayloadSize=1048576,
+			autoFragmentSize=65536,
+			failByDrop=False,
+			openHandshakeTimeout=2.5,
+			closeHandshakeTimeout=1.0,
+			tcpNoDelay=True,
+			autoPingInterval=10.0,
+			autoPingTimeout=5.0,
+			autoPingSize=4,
+			perMessageCompressionOffers=offers,
+			perMessageCompressionAccept=accept)
+
+		#runner ssl stuff missing
+		if self.ssl is None:
+			ssl = isSecure
+		else:
+			if self.ssl and not isSecure:
+				raise RuntimeError('ssl argument value passed to %s conflicts with the "ws:" prefix of the url argument.')
+			ssl = self.ssl
+
+		# start the client connection
+		self.loop = asyncio.get_event_loop()
+		if self.loop.is_closed():
+			asyncio.set_event_loop(asyncio.new_event_loop())
+			self.loop = asyncio.get_event_loop()
+			if hasattr(transport_factory, "loop"):
+				transport_factory.loop = self.loop
+
+		txaio.use_asyncio()
+		txaio.config.loop = self.loop
+		coro = self.loop.create_connection(transport_factory, host, port, ssl=ssl)
+
+		# start asyncio loop
+		(transport, protocol) = self.loop.run_until_complete(coro)
+		try:
+		        self.loop.run_forever()
+		except KeyboardInterrupt:
+		        self.log.info("aborted by user")
+		        self.shutdown = True
+
+		if protocol._session:
+		        self.loop.run_until_complete(protocol._session.leave())
+		
+		self.loop.close()
+		self.session = None
+
 
 	def teardown(self):
 		"""called from external objects to singal gracefull teardown request"""
@@ -110,16 +168,6 @@ class CommunicatorThread(threading.Thread):
 		self.log.info("shutting down %s", self.name)
 		self.shutdown = True
 		self.loop.stop()
-
-
-	def send(self, msg):
-		self.outbox.append(msg)
-
-	def recv(self, msg):
-		return self.inbox.pop(msg)
-
-
-
 
 
 
