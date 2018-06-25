@@ -1,134 +1,53 @@
 #!/usr/bin/env python3
 
 import argparse
-import asyncio
-import autobahn.asyncio.component
-import autobahn.wamp.types
-import json
-import jsonschema
+import communicator
 import logging
+import netstat
 import os
 import txaio
 import signal
 import sys
 import threading
+import uuid
 
 
-class CommunicatorThread(threading.Thread):
 
-	## object and thread management
-	def __init__(self, url, realm, msg_schema):
+class NetstatThread(threading.Thread):
+
+	def __init__(self, communicator):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
-		self.name = "communicator"
+		self.name = "netstater"
 		self.log = logging.getLogger()
 
-		# autobahn
-		self.loop = None
-		self.session = None
-		self.component = autobahn.asyncio.component.Component(transports=[{"url": url}], realm=realm)
-		self.component.on("connect", self.sessionOnConnect)
-		self.component.on("join", self.sessionOnJoin)
-		self.component.on("ready", self.sessionOnReady)
-		self.component.on("leave", self.sessionOnLeave)
-		self.component.on("disconnect", self.sessionOnDisconnect)
-
-		# communicator
-		with open(msg_schema, "r") as ftmp:
-			self.msg_schema = json.loads(ftmp.read())
-		self.received = 0
+		self.communicator = communicator
+		self.shutdown = False
+		self.interface = "eth0"
+		self.timespan = 1
 
 
 	def run(self):
-		self.log.info("%s begin", self.name)
+		self.log.info("thread %s begin", self.name)
 
-		self.loop = asyncio.new_event_loop()
-		asyncio.set_event_loop(self.loop)
-		txaio.config.loop = self.loop
+		while not self.shutdown:
+			obj = {"Id": str(uuid.uuid4()), "Type": "netstat", "Message": {"data": netstat.stats(self.interface, self.timespan)}}
+			self.communicator.sendMessage(obj)
 
-		self.component.start()
-		try:
-			self.loop.run_forever()
-		except asyncio.CancelledError:
-			pass
-
-		self.loop.stop()
-		self.loop.close()
-
-		self.log.info("%s end", self.name)
-
-
-	def teardown_real(self):
-		"""should end the component from within communicator's thread"""
-
-		self.log.debug("%s teardown_real begin", self.name)
-
-		@asyncio.coroutine
-		def exit():
-			return self.loop.stop()
-
-		try:
-			self.component.stop()
-		except Exception as e:
-			self.log.error(e)
-
-		for task in asyncio.Task.all_tasks():
-			self.log.info("canceling: %s", task)
-			task.cancel()
-		asyncio.ensure_future(exit())
-
-		self.log.debug("%s teardown_real end", self.name)
+		self.log.info("thread %s end", self.name)
 
 
 	def teardown(self):
 		"""called from external objects to singal gracefull teardown request"""
 
 		self.log.debug("%s teardown begin", self.name)
-		self.loop.call_soon_threadsafe(self.teardown_real)
+		self.shutdown = True
 		self.log.debug("%s teardown end", self.name)
 
 
-	## applicationSession / component listeners
-	def sessionOnConnect(self, session, protocol):
-		self.log.debug("%s: connected %s %s", self.name, session, protocol)
 
-
-	def sessionOnJoin(self, session, details):
-		self.log.debug("%s: joined %s %s", self.name, session, details)
-		self.session = session
-
-		self.session.subscribe(self.receiveMessage, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
-
-
-	def sessionOnReady(self, session):
-		self.log.debug("%s: ready %s", self.name, session)
-
-
-	def sessionOnLeave(self, session, details):
-		self.log.debug("%s: left %s %s", self.name, session, details)
-		self.session = None
-
-
-	def sessionOnDisconnect(self, session, was_clean):
-		self.log.debug("%s: disconnected %s %s", self.name, session, was_clean)
-
-
-	def receiveMessage(self, msg, details=None):
-		try:
-			jsonschema.validate(msg, self.msg_schema)
-		except jsonschema.exceptions.ValidationError:
-			self.log.warn("%s: invalid message %s %s", self.name, msg, details)
-			return
-
-		self.log.info("%s: message %s %s", self.name, msg, details)
-		self.received += 1
-		if self.received > 2:
-			try:
-				self.teardown_real()
-			except Exception as e:
-				self.log.error(e)
-
-
+def handle_message(msg):
+	print(msg)
 
 
 
@@ -145,6 +64,7 @@ def parse_arguments():
 	return parser.parse_args()
 
 
+
 def teardown(signum, frame):
 	logger = logging.getLogger()
 	logger.info("signaled teardown begin")
@@ -158,6 +78,7 @@ def teardown(signum, frame):
 	logger.info("signaled teardown end")
 
 
+
 def main():
 	"""main"""
 
@@ -167,21 +88,26 @@ def main():
 	# txaio startup messes up standard logging
 	logger = logging.getLogger()
 	logger.handlers = []
+	logger.setLevel(logging.INFO)
+	txaio.start_logging(level="info")
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 		txaio.start_logging(level="debug")
-	else:
-		logger.setLevel(logging.WARNING)
-		txaio.start_logging(level="warn")
 
 
 	# startup
 	signal.signal(signal.SIGTERM, teardown)
 	signal.signal(signal.SIGINT, teardown)
-	thread_communicator = CommunicatorThread(args.server, args.realm, args.schema)
+
+	thread_communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, handle_message)
 	thread_communicator.start()
-	# there will be a loop
+
+	thread_netstat = NetstatThread(thread_communicator)
+	thread_netstat.start()
+
+	thread_netstat.join()
 	thread_communicator.join()
+
 
 
 if __name__ == "__main__":
