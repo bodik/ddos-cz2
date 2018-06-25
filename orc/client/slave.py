@@ -2,7 +2,7 @@
 
 import argparse
 import asyncio
-import autobahn.asyncio.wamp
+import autobahn.asyncio.component
 import autobahn.wamp.types
 import json
 import jsonschema
@@ -17,157 +17,121 @@ import threading
 import uuid
 
 
-class CommunicatorWampSession(autobahn.asyncio.wamp.ApplicationSession):
-
-	def __init__(self, *args, **kwargs):
-		super(CommunicatorWampSession, self).__init__(*args, **kwargs)
-		self.received = 0
-		self.msg_schema = self.config.extra["msg_schema"]
-		self.communicator_thread = self.config.extra["communicator_thread"]
-
-	async def onJoin(self, details):
-		def on_message(msg, details):
-			self.receiveMessage(msg)
-
-		self.log.info("{cls}: joined {details}", cls=self.__class__.__name__, details=details)
-		await self.subscribe(on_message, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
-
-	def onDisconnect(self):
-		asyncio.get_event_loop().stop()
-
-	def receiveMessage(self, msg):
-		try:
-			jsonschema.validate(msg, self.msg_schema)
-		except jsonschema.exceptions.ValidationError:
-			self.log.warn("{cls}: invalid message {msg}", cls=self.__class__.__name__, msg=msg)
-			return
-
-		self.log.info("{cls}: message {msg}", cls=self.__class__.__name__, msg=msg)
-		self.received += 1
-		if self.received > 30:
-			self.leave()
-
-
-
 class CommunicatorThread(threading.Thread):
 
+	## object and thread management
 	def __init__(self, url, realm, msg_schema):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
 		self.log = logging.getLogger()
 
+		# autobahn
+		self.loop = None
+		self.session = None
+		self.component = autobahn.asyncio.component.Component(transports=[{"url": url}], realm=realm)
+		self.component.on("connect", self.sessionOnConnect)
+		self.component.on("join", self.sessionOnJoin)
+		self.component.on("ready", self.sessionOnReady)
+		self.component.on("leave", self.sessionOnLeave)
+		self.component.on("disconnect", self.sessionOnDisconnect)
+
 		# communicator
 		with open(msg_schema, "r") as ftmp:
 			self.msg_schema = json.loads(ftmp.read())
-		self.shutdown = False
-
-		# asyncio
-		self.loop = None
-
-		# autobahn config and session
-		self.session = None
-		self.url = url
-		self.realm = realm
-		self.ssl = None
-		self.extra = {"communicator_thread": self, "msg_schema": self.msg_schema}
+		self.received = 0
 
 
 	def run(self):
-		self.log.info("start %s", self.name)
+		self.log.info("%s begin", self.name)
 
-		# setup loop for current thread
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
-
-		# loop runner/reconnect until shutting down
-		while not self.shutdown:
-			try:
-				self.applicationRunner()
-			except Exception as e:
-				self.log.error(e)
-				try:
-					time.sleep(1)
-				except KeyboardInterrupt:
-					self.log.info("aborted by user")
-					self.shutdown = True
-
-		self.log.info("end %s", self.name)
-
-	def applicationRunner(self):
-		"""application runner taken from autobahn.asyncio.wamp to have own session object"""
-		# runner is reimplemented for 2 main reasons:
-		# 	a) having callable session within thread/object, it might be injected into runner (make attr), but
-		# 	b) handling KeyboardInterrupt requires external loop anyway
-
-		# session
-		cfg = autobahn.wamp.types.ComponentConfig(self.realm, self.extra)
-		self.session = CommunicatorWampSession(cfg)
-
-		# transport factory
-		isSecure, host, port, resource, path, params = autobahn.websocket.util.parse_url(self.url)
-		transport_factory = autobahn.asyncio.websocket.WampWebSocketClientFactory(self.session, url=self.url, serializers=None, proxy=None, headers=None)
-
-		# connection options
-		offers = [autobahn.websocket.compress.PerMessageDeflateOffer()]
-		def accept(response):
-			if isinstance(response, autobahn.websocket.compress.PerMessageDeflateResponse):
-				return autobahn.websocket.compress.PerMessageDeflateResponseAccept(response)
-		transport_factory.setProtocolOptions( \
-			maxFramePayloadSize=1048576,
-			maxMessagePayloadSize=1048576,
-			autoFragmentSize=65536,
-			failByDrop=False,
-			openHandshakeTimeout=2.5,
-			closeHandshakeTimeout=1.0,
-			tcpNoDelay=True,
-			autoPingInterval=10.0,
-			autoPingTimeout=5.0,
-			autoPingSize=4,
-			perMessageCompressionOffers=offers,
-			perMessageCompressionAccept=accept)
-
-		#runner ssl stuff missing
-		if self.ssl is None:
-			ssl = isSecure
-		else:
-			if self.ssl and not isSecure:
-				raise RuntimeError('ssl argument value passed to %s conflicts with the "ws:" prefix of the url argument.')
-			ssl = self.ssl
-
-		# start the client connection
-		self.loop = asyncio.get_event_loop()
-		if self.loop.is_closed():
-			asyncio.set_event_loop(asyncio.new_event_loop())
-			self.loop = asyncio.get_event_loop()
-			if hasattr(transport_factory, "loop"):
-				transport_factory.loop = self.loop
-
-		txaio.use_asyncio()
 		txaio.config.loop = self.loop
-		coro = self.loop.create_connection(transport_factory, host, port, ssl=ssl)
 
-		# start asyncio loop
-		(transport, protocol) = self.loop.run_until_complete(coro)
+		self.component.start()
 		try:
-		        self.loop.run_forever()
-		except KeyboardInterrupt:
-		        self.log.info("aborted by user")
-		        self.shutdown = True
+			self.loop.run_forever()
+		except asyncio.CancelledError:
+			pass
 
-		if protocol._session:
-		        self.loop.run_until_complete(protocol._session.leave())
-		
+		self.loop.stop()
 		self.loop.close()
-		self.session = None
+
+		self.log.info("%s end", self.name)
+
+
+	def teardown_real(self):
+		"""should end the component from within communicator's thread"""
+
+		self.log.debug("%s teardown_real begin", self.name)
+
+		@asyncio.coroutine
+		def exit():
+			return self.loop.stop()
+
+		try:
+			self.component.stop()
+		except Exception as e:
+			self.log.error(e)
+
+		for task in asyncio.Task.all_tasks():
+			self.log.info("canceling: %s", task)
+			task.cancel()
+		asyncio.ensure_future(exit())
+
+		self.log.debug("%s teardown_real end", self.name)
 
 
 	def teardown(self):
 		"""called from external objects to singal gracefull teardown request"""
 
-		self.log.info("shutting down %s", self.name)
-		self.shutdown = True
-		self.loop.stop()
+		self.log.debug("%s teardown begin", self.name)
+		self.loop.call_soon_threadsafe(self.teardown_real)
+		self.log.debug("%s teardown end", self.name)
+
+
+	## applicationSession / component listeners
+	def sessionOnConnect(self, session, protocol):
+		self.log.debug("%s: connected %s %s", self.name, session, protocol)
+
+
+	def sessionOnJoin(self, session, details):
+		self.log.debug("%s: joined %s %s", self.name, session, details)
+		self.session = session
+
+		self.session.subscribe(self.receiveMessage, "ddos-cz2.slaves", options=autobahn.wamp.types.SubscribeOptions(details=True))
+
+
+	def sessionOnReady(self, session):
+		self.log.debug("%s: ready %s", self.name, session)
+
+
+	def sessionOnLeave(self, session, details):
+		self.log.debug("%s: left %s %s", self.name, session, details)
+		self.session = None
+
+
+	def sessionOnDisconnect(self, session, was_clean):
+		self.log.debug("%s: disconnected %s %s", self.name, session, was_clean)
+
+
+	def receiveMessage(self, msg, details=None):
+		try:
+			jsonschema.validate(msg, self.msg_schema)
+		except jsonschema.exceptions.ValidationError:
+			self.log.warn("%s: invalid message %s %s", self.name, msg, details)
+			return
+
+		self.log.info("%s: message %s %s", self.name, msg, details)
+		self.received += 1
+		if self.received > 2:
+			try:
+				self.teardown_real()
+			except Exception as e:
+				self.log.error(e)
+
+
 
 
 
@@ -186,15 +150,15 @@ def parse_arguments():
 
 def teardown(signum, frame):
 	logger = logging.getLogger()
-	logger.info("shutdown start")
+	logger.info("signaled teardown begin")
 
 	# shutdown all running threads without passing references through global variables
 	for thread in threading.enumerate():
 		if hasattr(thread, "teardown") and callable(getattr(thread, "teardown")):
 			thread.teardown()
-			thread.join(1)
+			thread.join(10)
 
-	logger.info("shutdown exit")
+	logger.info("signaled teardown end")
 
 
 def main():
