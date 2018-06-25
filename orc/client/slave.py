@@ -7,14 +7,11 @@ import autobahn.wamp.types
 import json
 import jsonschema
 import logging
-import netstat
 import os
-import time
 import txaio
 import signal
 import sys
 import threading
-import uuid
 
 
 class CommunicatorThread(threading.Thread):
@@ -169,10 +166,13 @@ def main():
 
 	# txaio startup messes up standard logging
 	logger = logging.getLogger()
+	logger.handlers = []
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
-	logger.handlers = []
-	txaio.start_logging(level=logging.getLevelName(logger.getEffectiveLevel()).lower())
+		txaio.start_logging(level="debug")
+	else:
+		logger.setLevel(logging.WARNING)
+		txaio.start_logging(level="warn")
 
 
 	# startup
@@ -180,9 +180,7 @@ def main():
 	signal.signal(signal.SIGINT, teardown)
 	thread_communicator = CommunicatorThread(args.server, args.realm, args.schema)
 	thread_communicator.start()
-
 	# there will be a loop
-
 	thread_communicator.join()
 
 
