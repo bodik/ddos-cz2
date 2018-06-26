@@ -19,7 +19,7 @@ class TsungTemplate(string.Template):
 class Runner(object):
 	"""executor holds code to execute the generator"""
 
-	CLIENT_CONFIG = "\t<client host=\"%s\" maxusers=\"10000\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
+	CLIENT_CONFIG = "\t<client host=\"%s\" maxusers=\"%s\" use_controller_vm=\"true\"><ip scan=\"true\" value=\"%s\"/></client>\n"
 	TSUNG_BIN = "/opt/tsung/bin/tsung"
 
 	def __init__(self, fields):
@@ -51,7 +51,7 @@ class Runner(object):
 
 		clients = ""
 		for client in self.fields['clients'].split(','):
-			clients += self.CLIENT_CONFIG % (client, self.fields['dev'])
+			clients += self.CLIENT_CONFIG % (client, self.fields['maxusers'],self.fields['dev'])
 
 		content = ""
 		if self.fields['content'].startswith('file://'):

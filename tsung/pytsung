@@ -28,8 +28,9 @@ def parse_arguments():
     parser.add_argument("--content", default="", help="request content; use file:// for load content from file")
 
     # performance arguments
-    parser.add_argument("--users", "-u", default=1000, type=int, choices=xrange(1,10000), metavar='{1-10000}' ,help="concurent users")
+    parser.add_argument("--users", "-u", default=1000, type=int, choices=xrange(1,15001), metavar='{1-15000}' ,help="concurent users")
     parser.add_argument("--requests", "-r", default=1, type=check_positive, metavar='{Positive number}', help='request per users')
+    parser.add_argument("--maxusers", default=10000, type=int, choices=xrange(1000,30000), metavar='{1000-30000}' ,help="maximum sockets per single process; but don't forget to raise the limit of the OS with ulimit -n")
 
     # generic arguments
     parser.add_argument("--debug", action="store_true", default=False, help="debug output")
