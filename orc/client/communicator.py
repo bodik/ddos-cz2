@@ -17,7 +17,7 @@ import uuid
 class CommunicatorThread(threading.Thread):
 
 	## object and thread management
-	def __init__(self, url, realm, identity, msg_schema, msg_callback=None):
+	def __init__(self, url, realm, msg_schema, identity, msg_callback=None):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
@@ -42,7 +42,7 @@ class CommunicatorThread(threading.Thread):
 
 
 	def run(self):
-		self.log.info("thread %s begin", self.name)
+		self.log.info("%s thread begin", self.name)
 
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
@@ -57,7 +57,7 @@ class CommunicatorThread(threading.Thread):
 		self.loop.stop()
 		self.loop.close()
 
-		self.log.info("thread %s end", self.name)
+		self.log.info("%s thread end", self.name)
 
 
 	def teardown_real(self):
@@ -90,39 +90,39 @@ class CommunicatorThread(threading.Thread):
 		self.log.debug("%s teardown end", self.name)
 
 
-	## applicationSession / component listeners
+	## application interface
 	def sessionOnConnect(self, session, protocol):
-		self.log.debug("%s: connected %s %s", self.name, session, protocol)
+		self.log.debug("%s connected %s %s", self.name, session, protocol)
 
 
 	def sessionOnJoin(self, session, details):
-		self.log.debug("%s: joined %s %s", self.name, session, details)
+		self.log.debug("%s joined %s %s", self.name, session, details)
 		self.session = session
 
 		self.session.subscribe(self.receiveMessage, self.topic, options=autobahn.wamp.types.SubscribeOptions(details=True))
 
 
 	def sessionOnReady(self, session):
-		self.log.debug("%s: ready %s", self.name, session)
+		self.log.debug("%s ready %s", self.name, session)
 
 
 	def sessionOnLeave(self, session, details):
-		self.log.debug("%s: left %s %s", self.name, session, details)
+		self.log.debug("%s left %s %s", self.name, session, details)
 		self.session = None
 
 
 	def sessionOnDisconnect(self, session, was_clean):
-		self.log.debug("%s: disconnected %s %s", self.name, session, was_clean)
+		self.log.debug("%s disconnected %s %s", self.name, session, was_clean)
 
 
 	def receiveMessage(self, msg, details=None):
 		try:
 			jsonschema.validate(msg, self.msg_schema)
 		except jsonschema.exceptions.ValidationError:
-			self.log.warn("%s: invalid message %s %s", self.name, msg, details)
+			self.log.warn("%s invalid message %s %s", self.name, msg, details)
 			return
 
-		self.log.debug("%s: message %s %s", self.name, msg, details)
+		self.log.debug("%s message %s %s", self.name, msg, details)
 		if callable(self.msg_callback):
 			self.msg_callback(msg)
 

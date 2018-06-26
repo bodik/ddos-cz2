@@ -4,50 +4,106 @@ import argparse
 import communicator
 import logging
 import netstat
-import os
 import txaio
 import signal
+import socket
 import sys
 import threading
-import uuid
 
 
 
 class NetstatThread(threading.Thread):
 
-	def __init__(self, communicator):
+	## object and thread management
+	def __init__(self, communicator, interface="eth0", timespan=1):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
-		self.name = "netstater"
+		self.name = "netstat"
 		self.log = logging.getLogger()
 
 		self.communicator = communicator
+		self.interface = interface
+		self.timespan = timespan
 		self.shutdown = False
-		self.interface = "eth0"
-		self.timespan = 1
 
 
 	def run(self):
-		self.log.info("thread %s begin", self.name)
+		self.log.info("%s thread begin", self.name)
 
 		while not self.shutdown:
-			obj = {"Id": str(uuid.uuid4()), "Type": "netstat", "Message": {"data": netstat.stats(self.interface, self.timespan)}}
+			obj = {"Type": "netstat", "Message": netstat.stats(self.interface, self.timespan)}
 			self.communicator.sendMessage(obj)
 
-		self.log.info("thread %s end", self.name)
+		self.log.info("%s thread end", self.name)
 
 
 	def teardown(self):
 		"""called from external objects to singal gracefull teardown request"""
 
-		self.log.debug("%s teardown begin", self.name)
 		self.shutdown = True
-		self.log.debug("%s teardown end", self.name)
 
 
 
-def handle_message(msg):
-	print(msg)
+class SlaveShell():
+	"""slave shell object"""
+
+	## object and thread management
+	def __init__(self):
+		self.name = "slaveshell"
+		self.log = logging.getLogger()
+
+		self.communicator = None
+
+
+	def run(self, args):
+		self.log.info("%s thread begin", self.name)
+
+		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
+		self.communicator.start()
+		self.communicator.join()
+
+		self.log.info("%s thread end", self.name)
+
+	def teardown(self):
+		self.communicator.teardown()
+
+
+	## appllication interface
+	def handle_message(self, msg):
+		self.log.debug("%s handle_message %s", self.name, msg)
+
+		if msg["Type"] == "command":
+			try:
+				command_callable = "command_%s" % msg["Message"]["command"]
+				if hasattr(self, command_callable) and callable(getattr(self, command_callable)):
+					call = getattr(self, command_callable)
+					call(msg["Message"]["arguments"])
+			except Exception as e:
+				self.log.error("%s invalid command %s %s", self.name, msg, e)
+
+
+	def command_tlist(self, arguments):
+		data = [{"name": thread.name, "ident": thread.ident} for thread in threading.enumerate()]
+		self.communicator.sendMessage({"Type": "tlist", "Message": data})
+
+
+	def command_tstop(self, arguments):
+		for thread in threading.enumerate():
+			if str(thread.ident) in arguments:
+				thread.teardown()
+				thread.join(10)
+
+
+	def command_netstat(self, arguments):
+		self.log.info("command_netstat %s", arguments)
+		if "off" in arguments:
+			for thread in threading.enumerate():
+				if thread.name == "netstat":
+					thread.teardown()
+					thread.join(10)
+		else:
+			thread = NetstatThread(self.communicator)
+			thread.start()
 
 
 
@@ -59,10 +115,10 @@ def parse_arguments():
 	parser.add_argument("--server", default="ws://127.0.0.1:56000/")
 	parser.add_argument("--realm", default="orc1")
 	parser.add_argument("--schema", default="orcish.schema")
+	parser.add_argument("--identity", default=socket.getfqdn())
 	parser.add_argument("--debug", action="store_true")
 
 	return parser.parse_args()
-
 
 
 def teardown(signum, frame):
@@ -76,7 +132,6 @@ def teardown(signum, frame):
 			thread.join(10)
 
 	logger.info("signaled teardown end")
-
 
 
 def main():
@@ -94,19 +149,10 @@ def main():
 		logger.setLevel(logging.DEBUG)
 		txaio.start_logging(level="debug")
 
-
 	# startup
 	signal.signal(signal.SIGTERM, teardown)
 	signal.signal(signal.SIGINT, teardown)
-
-	thread_communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, handle_message)
-	thread_communicator.start()
-
-	thread_netstat = NetstatThread(thread_communicator)
-	thread_netstat.start()
-
-	thread_netstat.join()
-	thread_communicator.join()
+	SlaveShell().run(args)
 
 
 
