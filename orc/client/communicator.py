@@ -15,6 +15,7 @@ import uuid
 
 
 class CommunicatorThread(threading.Thread):
+	"""wamp transport communication component"""
 
 	## object and thread management
 	def __init__(self, url, realm, msg_schema, identity, msg_callback=None):
@@ -27,11 +28,11 @@ class CommunicatorThread(threading.Thread):
 		self.loop = None
 		self.session = None
 		self.component = autobahn.asyncio.component.Component(transports=[{"url": url}], realm=realm)
-		self.component.on("connect", self.sessionOnConnect)
-		self.component.on("join", self.sessionOnJoin)
-		self.component.on("ready", self.sessionOnReady)
-		self.component.on("leave", self.sessionOnLeave)
-		self.component.on("disconnect", self.sessionOnDisconnect)
+		self.component.on("connect", self.session_on_connect)
+		self.component.on("join", self.session_on_join)
+		self.component.on("ready", self.session_on_ready)
+		self.component.on("leave", self.session_on_leave)
+		self.component.on("disconnect", self.session_on_disconnect)
 
 		# communicator
 		self.identity = identity
@@ -66,7 +67,8 @@ class CommunicatorThread(threading.Thread):
 		self.log.debug("%s teardown_real begin", self.name)
 
 		@asyncio.coroutine
-		def exit():
+		def exitcoro():
+			"""exit coroutine"""
 			return self.loop.stop()
 
 		try:
@@ -77,7 +79,7 @@ class CommunicatorThread(threading.Thread):
 		for task in asyncio.Task.all_tasks():
 			self.log.info("canceling: %s", task)
 			task.cancel()
-		asyncio.ensure_future(exit())
+		asyncio.ensure_future(exitcoro())
 
 		self.log.debug("%s teardown_real end", self.name)
 
@@ -91,35 +93,47 @@ class CommunicatorThread(threading.Thread):
 
 
 	## application interface
-	def sessionOnConnect(self, session, protocol):
+	def session_on_connect(self, session, protocol):
+		"""on connect"""
+
 		self.log.debug("%s connected %s %s", self.name, session, protocol)
 
 
-	def sessionOnJoin(self, session, details):
+	def session_on_join(self, session, details):
+		"""on join"""
+
 		self.log.debug("%s joined %s %s", self.name, session, details)
 		self.session = session
 
-		self.session.subscribe(self.receiveMessage, self.topic, options=autobahn.wamp.types.SubscribeOptions(details=True))
+		self.session.subscribe(self.receive_message, self.topic, options=autobahn.wamp.types.SubscribeOptions(details=True))
 
 
-	def sessionOnReady(self, session):
+	def session_on_ready(self, session):
+		"""on ready"""
+
 		self.log.debug("%s ready %s", self.name, session)
 
 
-	def sessionOnLeave(self, session, details):
+	def session_on_leave(self, session, details):
+		"""on leave"""
+
 		self.log.debug("%s left %s %s", self.name, session, details)
 		self.session = None
 
 
-	def sessionOnDisconnect(self, session, was_clean):
+	def session_on_disconnect(self, session, was_clean):
+		"""on disconnect"""
+
 		self.log.debug("%s disconnected %s %s", self.name, session, was_clean)
 
 
-	def receiveMessage(self, msg, details=None):
+	def receive_message(self, msg, details=None):
+		"""receive message, transport callback"""
+
 		try:
 			jsonschema.validate(msg, self.msg_schema)
 		except jsonschema.exceptions.ValidationError:
-			self.log.warn("%s invalid message %s %s", self.name, msg, details)
+			self.log.warning("%s invalid message %s %s", self.name, msg, details)
 			return
 
 		self.log.debug("%s message %s %s", self.name, msg, details)
@@ -127,14 +141,16 @@ class CommunicatorThread(threading.Thread):
 			self.msg_callback(msg)
 
 
-	def sendMessage(self, obj):
+	def send_message(self, obj):
+		"""send message, transport service"""
+
 		try:
 			if self.session:
 				obj["Id"] = str(uuid.uuid4())
 				obj["Node"] = self.identity
 				self.session.publish(self.topic, obj)
 		except Exception as e:
-			self.log.warn(e)
+			self.log.warning(e)
 			return False
 
 		return True

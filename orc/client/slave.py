@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""slave orc"""
+
 
 import argparse
 import communicator
@@ -14,15 +16,16 @@ import txaio
 
 
 class ExecThread(threading.Thread):
+	"""subprocess in thread wrapper"""
 
 	## object and thread management
-	def __init__(self, communicator, arguments):
+	def __init__(self, comm, arguments):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "exec"
 		self.log = logging.getLogger()
 
-		self.communicator = communicator
+		self.communicator = comm
 
 		self.arguments = arguments
 		self.process = None
@@ -42,7 +45,7 @@ class ExecThread(threading.Thread):
 				break
 
 			obj = {"Type": "message", "Message": line}
-			self.communicator.sendMessage(obj)
+			self.communicator.send_message(obj)
 
 		self.log.info("%s thread end", self.name)
 
@@ -76,6 +79,8 @@ class SlaveShell():
 
 
 	def run(self, args):
+		"""main"""
+
 		self.log.info("%s thread begin", self.name)
 
 		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
@@ -85,11 +90,15 @@ class SlaveShell():
 		self.log.info("%s thread end", self.name)
 
 	def teardown(self):
+		"""teardown component"""
+
 		self.communicator.teardown()
 
 
 	## appllication interface
 	def handle_message(self, msg):
+		"""handle incomming messages, communicator's callback"""
+
 		self.log.debug("%s handle_message %s", self.name, msg)
 
 		if msg["Type"] == "command":
@@ -102,22 +111,30 @@ class SlaveShell():
 				self.log.error("%s invalid command %s %s", self.name, msg, e)
 
 
-	def command_nodes(self, arguments):
+	def command_nodes(self, arguments): # pylint: disable=unused-argument
+		"""reply to application ping"""
+
 		data = subprocess.check_output(["uname", "-a"]).rstrip().decode("utf-8")
-		self.communicator.sendMessage({"Type": "nodes", "Message": data})
+		self.communicator.send_message({"Type": "nodes", "Message": data})
 
 
 	def command_exec(self, arguments):
+		"""execute in thread"""
+
 		thread = ExecThread(self.communicator, arguments)
 		thread.start()
 
 
-	def command_tlist(self, arguments):
+	def command_tlist(self, arguments): # pylint: disable=unused-argument
+		"""list current process threads"""
+
 		data = [{"name": thread.name, "ident": thread.ident} for thread in threading.enumerate()]
-		self.communicator.sendMessage({"Type": "tlist", "Message": data})
+		self.communicator.send_message({"Type": "tlist", "Message": data})
 
 
-	def command_tstop(self, arguments):
+	def command_tstop(self, arguments): # pylint: disable=no-self-use
+		"""stop threads"""
+
 		for thread in threading.enumerate():
 			if str(thread.ident) in arguments:
 				thread.teardown()
@@ -125,11 +142,15 @@ class SlaveShell():
 
 
 	def command_non(self, arguments):
+		"""start netstat thread"""
+
 		thread = ExecThread(self.communicator, ["python2", "-u", "../../tg/bin/netstat.py"] + arguments)
 		thread.name = "netstat"
 		thread.start()
 
-	def command_noff(self, arguments):
+	def command_noff(self, arguments): # pylint: disable=no-self-use,unused-argument
+		"""stop all netstat threads"""
+
 		for thread in threading.enumerate():
 			if thread.name == "netstat":
 				thread.teardown()
@@ -151,7 +172,9 @@ def parse_arguments():
 	return parser.parse_args()
 
 
-def teardown(signum, frame):
+def teardown(signum, frame): # pylint: disable=unused-argument
+	"""signal handler, try to shutdown all threads"""
+
 	logger = logging.getLogger()
 	logger.info("signaled teardown begin")
 

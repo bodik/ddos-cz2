@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
+"""master orc"""
 
 
 import argparse
 import communicator
 import console
 import logging
-import random
 import socket
 import sys
 import txaio
@@ -21,10 +21,13 @@ class MasterShell(object):
 		self.log = logging.getLogger()
 
 		self.communicator = None
+		self.console = None
 		self.shutdown = False
 
 
 	def run(self, args):
+		"""main"""
+
 		self.log.info("%s thread begin", self.name)
 
 		identity = socket.getfqdn()
@@ -53,21 +56,27 @@ class MasterShell(object):
 
 
 	def teardown(self):
+		"""teardown component"""
 		pass
 
 
 	## application interface
 	def handle_message(self, msg):
+		"""handle incomming messages, communicator's callback"""
+
 		self.console.add_line("[%s] %s" % (msg["Node"], msg["Message"]))
 
+
 	def handle_command(self, command):
+		"""reply to application ping"""
+
 		cmd = command.split(" ")
-	
+
 		if cmd[0] == "quit":
 			self.shutdown = True
-		
+
 		if cmd[0] in ["nodes", "exec", "tlist", "tstop", "non", "noff"]:
-			self.communicator.sendMessage({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
+			self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
 
 
 def parse_arguments():
