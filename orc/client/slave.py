@@ -3,35 +3,45 @@
 import argparse
 import communicator
 import logging
-import netstat
-import txaio
+import os
 import signal
 import socket
+import subprocess
 import sys
 import threading
+import txaio
 
 
 
-class NetstatThread(threading.Thread):
+class ExecThread(threading.Thread):
 
 	## object and thread management
-	def __init__(self, communicator, interface="eth0", timespan=1):
+	def __init__(self, communicator, arguments):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
-		self.name = "netstat"
+		self.name = "exec"
 		self.log = logging.getLogger()
 
 		self.communicator = communicator
-		self.interface = interface
-		self.timespan = timespan
+
+		self.arguments = arguments
+		self.process = None
 		self.shutdown = False
 
 
 	def run(self):
 		self.log.info("%s thread begin", self.name)
 
+		self.process = subprocess.Popen(self.arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setsid)
+
 		while not self.shutdown:
-			obj = {"Type": "netstat", "Message": netstat.stats(self.interface, self.timespan)}
+			line = self.process.stdout.readline().rstrip().decode("utf-8")
+
+			self.process.poll()
+			if (not line) and (self.process.returncode is not None):
+				break
+
+			obj = {"Type": "message", "Message": line}
 			self.communicator.sendMessage(obj)
 
 		self.log.info("%s thread end", self.name)
@@ -41,6 +51,16 @@ class NetstatThread(threading.Thread):
 		"""called from external objects to singal gracefull teardown request"""
 
 		self.shutdown = True
+		self.terminate_process()
+
+
+	def terminate_process(self):
+		"""terminate process"""
+
+		self.process.poll()
+		if self.process.returncode is None:
+			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+			self.process.wait()
 
 
 
@@ -82,6 +102,16 @@ class SlaveShell():
 				self.log.error("%s invalid command %s %s", self.name, msg, e)
 
 
+	def command_nodes(self, arguments):
+		data = subprocess.check_output(["uname", "-a"]).rstrip().decode("utf-8")
+		self.communicator.sendMessage({"Type": "nodes", "Message": data})
+
+
+	def command_exec(self, arguments):
+		thread = ExecThread(self.communicator, arguments)
+		thread.start()
+
+
 	def command_tlist(self, arguments):
 		data = [{"name": thread.name, "ident": thread.ident} for thread in threading.enumerate()]
 		self.communicator.sendMessage({"Type": "tlist", "Message": data})
@@ -94,16 +124,16 @@ class SlaveShell():
 				thread.join(10)
 
 
-	def command_netstat(self, arguments):
-		self.log.info("command_netstat %s", arguments)
-		if "off" in arguments:
-			for thread in threading.enumerate():
-				if thread.name == "netstat":
-					thread.teardown()
-					thread.join(10)
-		else:
-			thread = NetstatThread(self.communicator)
-			thread.start()
+	def command_non(self, arguments):
+		thread = ExecThread(self.communicator, ["python2", "-u", "../../tg/bin/netstat.py"] + arguments)
+		thread.name = "netstat"
+		thread.start()
+
+	def command_noff(self, arguments):
+		for thread in threading.enumerate():
+			if thread.name == "netstat":
+				thread.teardown()
+				thread.join(10)
 
 
 

@@ -58,7 +58,7 @@ class MasterShell(object):
 
 	## application interface
 	def handle_message(self, msg):
-		self.console.add_line("[%s] %s: %s" % (msg["Node"], msg["Id"], msg["Message"]))
+		self.console.add_line("[%s] %s" % (msg["Node"], msg["Message"]))
 
 	def handle_command(self, command):
 		cmd = command.split(" ")
@@ -66,7 +66,7 @@ class MasterShell(object):
 		if cmd[0] == "quit":
 			self.shutdown = True
 		
-		if cmd[0] in ["netstat", "tlist", "tstop"]:
+		if cmd[0] in ["nodes", "exec", "tlist", "tstop", "non", "noff"]:
 			self.communicator.sendMessage({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
 
 
