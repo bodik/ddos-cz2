@@ -17,7 +17,7 @@ import uuid
 class CommunicatorThread(threading.Thread):
 
 	## object and thread management
-	def __init__(self, url, realm, msg_schema, msg_callback=None):
+	def __init__(self, url, realm, identity, msg_schema, msg_callback=None):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
@@ -34,10 +34,11 @@ class CommunicatorThread(threading.Thread):
 		self.component.on("disconnect", self.sessionOnDisconnect)
 
 		# communicator
+		self.identity = identity
 		with open(msg_schema, "r") as ftmp:
 			self.msg_schema = json.loads(ftmp.read())
-		self.topic = "ddos-cz2.common"
 		self.msg_callback = msg_callback
+		self.topic = "ddos-cz2.common"
 
 
 	def run(self):
@@ -47,7 +48,7 @@ class CommunicatorThread(threading.Thread):
 		asyncio.set_event_loop(self.loop)
 		txaio.config.loop = self.loop
 
-		self.component.start()
+		self.component.start(loop=self.loop)
 		try:
 			self.loop.run_forever()
 		except asyncio.CancelledError:
@@ -129,6 +130,8 @@ class CommunicatorThread(threading.Thread):
 	def sendMessage(self, obj):
 		try:
 			if self.session:
+				obj["Id"] = str(uuid.uuid4())
+				obj["Node"] = self.identity
 				self.session.publish(self.topic, obj)
 		except Exception as e:
 			self.log.warn(e)
