@@ -102,7 +102,7 @@ class CommunicatorThread(threading.Thread):
 	def session_on_join(self, session, details):
 		"""on join"""
 
-		self.log.debug("%s joined %s %s", self.name, session, details)
+		self.log.info("%s joined %s %s", self.name, session, details)
 		self.session = session
 
 		self.session.subscribe(self.receive_message, self.topic, options=autobahn.wamp.types.SubscribeOptions(details=True))
@@ -117,7 +117,7 @@ class CommunicatorThread(threading.Thread):
 	def session_on_leave(self, session, details):
 		"""on leave"""
 
-		self.log.debug("%s left %s %s", self.name, session, details)
+		self.log.info("%s left %s %s", self.name, session, details)
 		self.session = None
 
 
