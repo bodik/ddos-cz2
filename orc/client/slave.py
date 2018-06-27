@@ -19,7 +19,7 @@ class ExecThread(threading.Thread):
 	"""subprocess in thread wrapper"""
 
 	## object and thread management
-	def __init__(self, comm, arguments):
+	def __init__(self, comm, arguments, msg_type="message"):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "exec"
@@ -28,6 +28,7 @@ class ExecThread(threading.Thread):
 		self.communicator = comm
 
 		self.arguments = arguments
+		self.msg_type = msg_type
 		self.process = None
 		self.shutdown = False
 
@@ -44,7 +45,7 @@ class ExecThread(threading.Thread):
 			if (not line) and (self.process.returncode is not None):
 				break
 
-			obj = {"Type": "message", "Message": line}
+			obj = {"Type": self.msg_type, "Message": line}
 			self.communicator.send_message(obj)
 
 		self.log.info("%s thread end", self.name)
@@ -84,6 +85,8 @@ class SlaveShell():
 		self.log.info("%s thread begin", self.name)
 
 		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
+		self.command_non([])
+
 		self.communicator.start()
 		self.communicator.join()
 
@@ -144,7 +147,7 @@ class SlaveShell():
 	def command_non(self, arguments):
 		"""start netstat thread"""
 
-		thread = ExecThread(self.communicator, ["python2", "-u", "../../tg/bin/netstat.py"] + arguments)
+		thread = ExecThread(self.communicator, ["python3", "-u", "../../tg/bin/netstat.py"] + arguments, "netstat")
 		thread.name = "netstat"
 		thread.start()
 
