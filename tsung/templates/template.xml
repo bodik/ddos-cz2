@@ -14,7 +14,7 @@
 
   <load>
         <arrivalphase phase="1" duration="100" unit="minute">
-                <users maxnumber="__TSUNG_users" arrivalrate="__TSUNG_users" unit="second"/>
+                <users maxnumber="__TSUNG_users" arrivalrate="__TSUNG_usersarrival" unit="second"/>
         </arrivalphase>
   </load>
 
@@ -27,6 +27,7 @@
     <user_agent probability="20">Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36</user_agent>
    </option>
    <option name="ssl_versions" value="'tlsv1.2'"/>
+   <!--<option name="ports_range" min="1024" max="65535" />-->
   </options>
 
   <!-- start a session for a http user. the probability is the
