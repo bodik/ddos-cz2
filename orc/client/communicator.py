@@ -43,7 +43,7 @@ class CommunicatorThread(threading.Thread):
 
 
 	def run(self):
-		self.log.info("%s thread begin", self.name)
+		self.log.debug("%s thread begin", self.name)
 
 		self.loop = asyncio.new_event_loop()
 		asyncio.set_event_loop(self.loop)
@@ -58,7 +58,7 @@ class CommunicatorThread(threading.Thread):
 		self.loop.stop()
 		self.loop.close()
 
-		self.log.info("%s thread end", self.name)
+		self.log.debug("%s thread end", self.name)
 
 
 	def teardown_real(self):
@@ -102,7 +102,7 @@ class CommunicatorThread(threading.Thread):
 	def session_on_join(self, session, details):
 		"""on join"""
 
-		self.log.info("%s joined %s %s", self.name, session, details)
+		self.log.debug("%s joined %s %s", self.name, session, details)
 		self.session = session
 
 		self.session.subscribe(self.receive_message, self.topic, options=autobahn.wamp.types.SubscribeOptions(details=True))
@@ -117,7 +117,7 @@ class CommunicatorThread(threading.Thread):
 	def session_on_leave(self, session, details):
 		"""on leave"""
 
-		self.log.info("%s left %s %s", self.name, session, details)
+		self.log.debug("%s left %s %s", self.name, session, details)
 		self.session = None
 
 

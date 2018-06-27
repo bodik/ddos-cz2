@@ -151,6 +151,7 @@ class SlaveShell():
 		thread.name = "netstat"
 		thread.start()
 
+
 	def command_noff(self, arguments): # pylint: disable=no-self-use,unused-argument
 		"""stop all netstat threads"""
 

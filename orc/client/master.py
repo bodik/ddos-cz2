@@ -4,12 +4,13 @@
 
 import argparse
 import communicator
-import console
 import logging
+import shlex
 import socket
 import sys
+import time
 import txaio
-
+import ui
 
 
 class MasterShell(object):
@@ -28,31 +29,32 @@ class MasterShell(object):
 	def run(self, args):
 		"""main"""
 
-		self.log.info("%s thread begin", self.name)
-
-		identity = socket.getfqdn()
-		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, identity, self.handle_message)
+		self.log.debug("%s thread begin", self.name)
+		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
 		self.communicator.start()
 
-		self.console = console.Console()
+		if args.ui == "formed":
+			self.console = ui.Formed(self.handle_command)
 
-		while not self.shutdown:
-			try:
-				prompt_input = self.console.prompt_input()
-				self.handle_command(prompt_input.strip())
-			except KeyboardInterrupt:
-				self.shutdown = True
-			except Exception as e:
-				self.shutdown = True
-				self.console.teardown()
-				self.log.error(e)
+		if args.ui == "listener":
+			self.console = ui.Listener()
 
-		self.console.teardown()
+		if args.ui == "commander":
+			self.console = ui.Commander(self.handle_command)
+			timeout = 10
+			while (not self.communicator.session) and (timeout > 0):
+				self.log.info("waiting on session")
+				timeout -= 1
+				time.sleep(1)
+
+		try:
+			self.console.run()
+		except KeyboardInterrupt:
+			pass
 
 		self.communicator.teardown()
 		self.communicator.join()
-
-		self.log.info("%s thread end", self.name)
+		self.log.debug("%s thread end", self.name)
 
 
 	def teardown(self):
@@ -61,22 +63,17 @@ class MasterShell(object):
 
 
 	## application interface
-	def handle_message(self, msg):
+	def handle_message(self, message):
 		"""handle incomming messages, communicator's callback"""
 
-		self.console.add_line("[%s] %s" % (msg["Node"], msg["Message"]))
+		self.console.handle_message(message)
 
 
 	def handle_command(self, command):
 		"""reply to application ping"""
 
-		cmd = command.split(" ")
-
-		if cmd[0] == "quit":
-			self.shutdown = True
-
-		if cmd[0] in ["nodes", "exec", "tlist", "tstop", "non", "noff"]:
-			self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
+		cmd = shlex.split(command)
+		self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
 
 
 def parse_arguments():
@@ -88,6 +85,7 @@ def parse_arguments():
 	parser.add_argument("--realm", default="orc1")
 	parser.add_argument("--schema", default="orcish.schema")
 	parser.add_argument("--identity", default=socket.getfqdn())
+	parser.add_argument("--ui", default="formed", choices=["formed", "listener", "commander"])
 	parser.add_argument("--debug", action="store_true")
 
 	return parser.parse_args()
@@ -103,8 +101,8 @@ def main():
 	# txaio startup messes up standard logging
 	logger = logging.getLogger()
 	logger.handlers = []
-	logger.setLevel(logging.WARNING)
-	txaio.start_logging(level="warn")
+	logger.setLevel(logging.INFO)
+	txaio.start_logging(level="info")
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 		txaio.start_logging(level="debug")
