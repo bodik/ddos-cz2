@@ -19,7 +19,7 @@ class ExecThread(threading.Thread):
 	"""subprocess in thread wrapper"""
 
 	## object and thread management
-	def __init__(self, comm, arguments, msg_type="message"):
+	def __init__(self, comm, arguments, message_type="message"):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "exec"
@@ -28,7 +28,7 @@ class ExecThread(threading.Thread):
 		self.communicator = comm
 
 		self.arguments = arguments
-		self.msg_type = msg_type
+		self.message_type = message_type
 		self.process = None
 		self.shutdown = False
 
@@ -45,7 +45,7 @@ class ExecThread(threading.Thread):
 			if (not line) and (self.process.returncode is not None):
 				break
 
-			obj = {"Type": self.msg_type, "Message": line}
+			obj = {"Type": self.message_type, "Message": line}
 			self.communicator.send_message(obj)
 
 		self.log.info("%s thread end", self.name)
@@ -99,19 +99,19 @@ class SlaveShell():
 
 
 	## appllication interface
-	def handle_message(self, msg):
+	def handle_message(self, message):
 		"""handle incomming messages, communicator's callback"""
 
-		self.log.debug("%s handle_message %s", self.name, msg)
+		self.log.debug("%s handle_message %s", self.name, message)
 
-		if msg["Type"] == "command":
+		if message["Type"] == "command":
 			try:
-				command_callable = "command_%s" % msg["Message"]["command"]
+				command_callable = "command_%s" % message["Message"]["command"]
 				if hasattr(self, command_callable) and callable(getattr(self, command_callable)):
 					call = getattr(self, command_callable)
-					call(msg["Message"]["arguments"])
+					call(message["Message"]["arguments"])
 			except Exception as e:
-				self.log.error("%s invalid command %s %s", self.name, msg, e)
+				self.log.error("%s invalid command %s %s", self.name, messsage, e)
 
 
 	def command_nodes(self, arguments): # pylint: disable=unused-argument
