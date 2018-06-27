@@ -111,7 +111,7 @@ class SlaveShell():
 					call = getattr(self, command_callable)
 					call(message["Message"]["arguments"])
 			except Exception as e:
-				self.log.error("%s invalid command %s %s", self.name, messsage, e)
+				self.log.error("%s invalid command %s %s", self.name, message, e)
 
 
 	def command_nodes(self, arguments): # pylint: disable=unused-argument
