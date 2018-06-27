@@ -18,7 +18,7 @@ class CommunicatorThread(threading.Thread):
 	"""wamp transport communication component"""
 
 	## object and thread management
-	def __init__(self, url, realm, msg_schema, identity, msg_callback=None):
+	def __init__(self, url, realm, message_schema, identity, message_handler=None):
 		threading.Thread.__init__(self)
 		self.setDaemon(True)
 		self.name = "communicator"
@@ -36,9 +36,9 @@ class CommunicatorThread(threading.Thread):
 
 		# communicator
 		self.identity = identity
-		with open(msg_schema, "r") as ftmp:
-			self.msg_schema = json.loads(ftmp.read())
-		self.msg_callback = msg_callback
+		with open(message_schema, "r") as ftmp:
+			self.message_schema = json.loads(ftmp.read())
+		self.message_handler = message_handler
 		self.topic = "ddos-cz2.common"
 
 
@@ -127,18 +127,18 @@ class CommunicatorThread(threading.Thread):
 		self.log.debug("%s disconnected %s %s", self.name, session, was_clean)
 
 
-	def receive_message(self, msg, details=None):
+	def receive_message(self, message, details=None):
 		"""receive message, transport callback"""
 
 		try:
-			jsonschema.validate(msg, self.msg_schema)
+			jsonschema.validate(message, self.message_schema)
 		except jsonschema.exceptions.ValidationError:
-			self.log.warning("%s invalid message %s %s", self.name, msg, details)
+			self.log.warning("%s invalid message %s %s", self.name, message, details)
 			return
 
-		self.log.debug("%s message %s %s", self.name, msg, details)
-		if callable(self.msg_callback):
-			self.msg_callback(msg)
+		self.log.debug("%s message %s %s", self.name, message, details)
+		if callable(self.message_handler):
+			self.message_handler(message)
 
 
 	def send_message(self, obj):
