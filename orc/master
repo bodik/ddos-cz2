@@ -3,7 +3,6 @@
 
 
 import argparse
-import logging
 import orc
 import socket
 import sys

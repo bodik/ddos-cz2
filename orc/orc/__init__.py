@@ -1,9 +1,9 @@
 """orc module"""
 
-from orc.communicator import *
-from orc.ui import *
 
 import logging
+import orc.communicator
+import orc.ui
 import os
 import shlex
 import signal
@@ -110,7 +110,7 @@ class Slave(object):
 
 		self.log.info("%s thread begin", self.name)
 
-		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
+		self.communicator = orc.communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
 		self.command_non([]) #TODO: only for dev purposes, will be removed for release
 		self.communicator.start()
 		self.communicator.join()
@@ -207,17 +207,17 @@ class Master(object):
 		"""main"""
 
 		self.log.debug("%s thread begin", self.name)
-		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
+		self.communicator = orc.communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
 		self.communicator.start()
 
 		if args.ui == "formed":
-			self.console = ui.Formed(self.handle_command)
+			self.console = orc.ui.Formed(self.handle_command)
 
 		if args.ui == "listener":
-			self.console = ui.Listener()
+			self.console = orc.ui.Listener()
 
 		if args.ui == "commander":
-			self.console = ui.Commander(self.handle_command)
+			self.console = orc.ui.Commander(self.handle_command)
 			timeout = 10
 			while (not self.communicator.session) and (timeout > 0):
 				self.log.info("waiting on session")
@@ -251,4 +251,3 @@ class Master(object):
 
 		cmd = shlex.split(command)
 		self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
-
