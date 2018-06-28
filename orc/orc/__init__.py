@@ -249,5 +249,8 @@ class Master(object):
 	def handle_command(self, command):
 		"""reply to application ping"""
 
-		cmd = shlex.split(command)
-		self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
+		if command:
+			cmd = shlex.split(command)
+			obj = {"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}}
+			self.communicator.send_message(obj)
+			self.console.wmain_add_line("[%20s]> %s" % (self.communicator.identity, obj))

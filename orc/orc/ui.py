@@ -22,7 +22,6 @@ class FormedActionController(npyscreen.ActionControllerSimple):
 
 	def do_command(self, command_line, widget_proxy, live): # pylint: disable=unused-argument
 		"""process entered command"""
-
 		# here might be some handling of ui.Formed command vs mastershell commands routing
 		self.parent.parentApp.command_handler(command_line)
 
@@ -48,7 +47,7 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 
 	def __init__(self, *args, **kwargs):
 		self.action_controller = self.ACTION_CONTROLLER(parent=self)
-		super(FormedForm, self).__init__(*args, **kwargs)
+		super(FormedForm, self).__init__(cycle_widgets=True, *args, **kwargs)
 
 
 	def draw_form(self):
