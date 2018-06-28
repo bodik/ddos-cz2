@@ -1,4 +1,10 @@
 #!/bin/sh
 
 BASE="$(dirname $(readlink -f $0))"
-${BASE}/bin/nexusd -c ${BASE}/etc/nexus.json
+
+OPTS="-c ${BASE}/etc/nexus.json"
+if [ $# -ge 1 ]; then
+	OPTS=$@
+fi
+
+exec ${BASE}/bin/nexusd $OPTS

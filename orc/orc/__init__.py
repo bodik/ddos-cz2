@@ -6,6 +6,7 @@ from orc.ui import *
 import logging
 import os
 import shlex
+import signal
 import subprocess
 import threading
 import time
@@ -171,7 +172,7 @@ class Slave(object):
 	def command_non(self, arguments):
 		"""start netstat thread"""
 
-		thread = ExecThread(self.communicator, ["python3", "-u", "../../tg/bin/netstat.py"] + arguments, "netstat")
+		thread = ExecThread(self.communicator, ["python3", "-u", "../tg/bin/netstat.py"] + arguments, "netstat")
 		thread.name = "netstat"
 		thread.start()
 
