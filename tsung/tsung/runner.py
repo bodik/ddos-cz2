@@ -51,7 +51,7 @@ class Runner(object):
 
 		clients = ""
 		for client in self.fields['clients'].split(','):
-			clients += self.CLIENT_CONFIG % (client, self.fields['maxusers'], self.fields['cpu'], self.fields['controllervm'], self.fields['dev'])
+			clients += self.CLIENT_CONFIG % (client, self.fields['maxusers'], self.fields['cpu'], str(self.fields['controllervm']).lower(), self.fields['dev'])
 
 		content = ""
 		if self.fields['content'].startswith('file://'):
