@@ -14,6 +14,12 @@
 				"strict_uri": false,
 				"allow_disclose": true,
 				"anonymous_auth": true
+			},
+			{
+				"uri": "orc2",
+				"strict_uri": false,
+				"allow_disclose": true,
+				"anonymous_auth": true
 			}
 		],
 		"debug": true

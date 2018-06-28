@@ -1,17 +1,42 @@
-#!/usr/bin/env python3
-"""slave orc"""
+"""orc module"""
 
+from orc.communicator import *
+from orc.ui import *
 
-import argparse
-import communicator
 import logging
 import os
-import signal
-import socket
+import shlex
 import subprocess
-import sys
 import threading
+import time
 import txaio
+
+
+def start_logging(debug=False):
+	"""startup logging, autobahn using txiao is little messy"""
+
+	logger = logging.getLogger()
+	logger.handlers = []
+	logger.setLevel(logging.INFO)
+	txaio.start_logging(level="info")
+	if debug:
+		logger.setLevel(logging.DEBUG)
+		txaio.start_logging(level="debug")
+
+
+def teardown(signum, frame): # pylint: disable=unused-argument
+	"""signal handler, try to shutdown all threads"""
+
+	logger = logging.getLogger()
+	logger.info("signaled teardown begin")
+
+	# shutdown all running threads without passing references through global variables
+	for thread in threading.enumerate():
+		if hasattr(thread, "teardown") and callable(getattr(thread, "teardown")):
+			thread.teardown()
+			thread.join(10)
+
+	logger.info("signaled teardown end")
 
 
 
@@ -68,12 +93,12 @@ class ExecThread(threading.Thread):
 
 
 
-class SlaveShell():
-	"""slave shell object"""
+class Slave(object):
+	"""slave object"""
 
 	## object and thread management
 	def __init__(self):
-		self.name = "slaveshell"
+		self.name = "slave"
 		self.log = logging.getLogger()
 
 		self.communicator = None
@@ -85,8 +110,7 @@ class SlaveShell():
 		self.log.info("%s thread begin", self.name)
 
 		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
-		self.command_non([])
-
+		self.command_non([]) #TODO: only for dev purposes, will be removed for release
 		self.communicator.start()
 		self.communicator.join()
 
@@ -162,56 +186,68 @@ class SlaveShell():
 
 
 
-def parse_arguments():
-	"""parse arguments"""
-
-	parser = argparse.ArgumentParser()
-
-	parser.add_argument("--server", default="ws://127.0.0.1:56000/")
-	parser.add_argument("--realm", default="orc1")
-	parser.add_argument("--schema", default="orcish.schema")
-	parser.add_argument("--identity", default=socket.getfqdn())
-	parser.add_argument("--debug", action="store_true")
-
-	return parser.parse_args()
-
-
-def teardown(signum, frame): # pylint: disable=unused-argument
-	"""signal handler, try to shutdown all threads"""
-
-	logger = logging.getLogger()
-	logger.info("signaled teardown begin")
-
-	# shutdown all running threads without passing references through global variables
-	for thread in threading.enumerate():
-		if hasattr(thread, "teardown") and callable(getattr(thread, "teardown")):
-			thread.teardown()
-			thread.join(10)
-
-	logger.info("signaled teardown end")
-
-
-def main():
-	"""main"""
-
-	# args
-	args = parse_arguments()
-
-	# txaio startup messes up standard logging
-	logger = logging.getLogger()
-	logger.handlers = []
-	logger.setLevel(logging.INFO)
-	txaio.start_logging(level="info")
-	if args.debug:
-		logger.setLevel(logging.DEBUG)
-		txaio.start_logging(level="debug")
-
-	# startup
-	signal.signal(signal.SIGTERM, teardown)
-	signal.signal(signal.SIGINT, teardown)
-	SlaveShell().run(args)
 
 
 
-if __name__ == "__main__":
-	sys.exit(main())
+class Master(object):
+	"""master object"""
+
+	## object and thread management
+	def __init__(self):
+		self.name = "master"
+		self.log = logging.getLogger()
+
+		self.communicator = None
+		self.console = None
+		self.shutdown = False
+
+
+	def run(self, args):
+		"""main"""
+
+		self.log.debug("%s thread begin", self.name)
+		self.communicator = communicator.CommunicatorThread(args.server, args.realm, args.schema, args.identity, self.handle_message)
+		self.communicator.start()
+
+		if args.ui == "formed":
+			self.console = ui.Formed(self.handle_command)
+
+		if args.ui == "listener":
+			self.console = ui.Listener()
+
+		if args.ui == "commander":
+			self.console = ui.Commander(self.handle_command)
+			timeout = 10
+			while (not self.communicator.session) and (timeout > 0):
+				self.log.info("waiting on session")
+				timeout -= 1
+				time.sleep(1)
+
+		try:
+			self.console.run()
+		except KeyboardInterrupt:
+			pass
+
+		self.communicator.teardown()
+		self.communicator.join()
+		self.log.debug("%s thread end", self.name)
+
+
+	def teardown(self):
+		"""teardown component"""
+		pass
+
+
+	## application interface
+	def handle_message(self, message):
+		"""handle incomming messages, communicator's callback"""
+
+		self.console.handle_message(message)
+
+
+	def handle_command(self, command):
+		"""reply to application ping"""
+
+		cmd = shlex.split(command)
+		self.communicator.send_message({"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}})
+

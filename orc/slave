@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""slave orc"""
+
+
+import argparse
+import logging
+import orc
+import signal
+import socket
+import sys
+import threading
+import txaio
+
+
+def parse_arguments():
+	"""parse arguments"""
+
+	parser = argparse.ArgumentParser()
+
+	parser.add_argument("--server", default="ws://127.0.0.1:56000/")
+	parser.add_argument("--realm", default="orc1")
+	parser.add_argument("--schema", default="etc/orcish.schema")
+	parser.add_argument("--identity", default=socket.getfqdn())
+	parser.add_argument("--debug", action="store_true")
+
+	return parser.parse_args()
+
+
+
+def main():
+	"""main"""
+
+	# args
+	args = parse_arguments()
+	orc.start_logging(args.debug)
+
+	# startup
+	signal.signal(signal.SIGTERM, orc.teardown)
+	signal.signal(signal.SIGINT, orc.teardown)
+	orc.Slave().run(args)
+
+
+
+if __name__ == "__main__":
+	sys.exit(main())
