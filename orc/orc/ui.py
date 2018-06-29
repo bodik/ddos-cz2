@@ -71,7 +71,7 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 		self.w_status2.value = "status 2"
 		self.w_status2.important = True
 
-		self.w_command = self.add(self.COMMAND_WIDGET_CLASS, rely=maxy-1-self.BLANK_LINES_BASE, relx=0, history=True)
+		self.w_command = self.add(self.COMMAND_WIDGET_CLASS, rely=maxy-1-self.BLANK_LINES_BASE, relx=0, history=True, history_max=1000, set_up_history_keys=True)
 
 		self.nextrely = 2
 
