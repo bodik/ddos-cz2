@@ -152,13 +152,11 @@ class Slave(object):
 		thread = ExecThread(self.communicator, arguments)
 		thread.start()
 
-
 	def command_tlist(self, arguments): # pylint: disable=unused-argument
 		"""list current process threads"""
 
 		data = [{"name": thread.name, "ident": thread.ident, "arguments": getattr(thread, "arguments", None)} for thread in threading.enumerate()]
 		self.communicator.send_message({"Type": "tlist", "Message": data})
-
 
 	def command_tstop(self, arguments): # pylint: disable=no-self-use
 		"""stop threads"""
@@ -176,7 +174,6 @@ class Slave(object):
 		thread.name = "netstat"
 		thread.start()
 
-
 	def command_noff(self, arguments): # pylint: disable=no-self-use,unused-argument
 		"""stop all netstat threads"""
 
@@ -184,6 +181,23 @@ class Slave(object):
 			if thread.name == "netstat":
 				thread.teardown()
 				thread.join(10)
+
+
+	def command_tg(self, arguments):
+		"""start trafgen shortcut"""
+
+		thread = ExecThread(self.communicator, ["python2", "-u", "../tg/tg2"] + arguments, "tg2")
+		thread.name = "tg2"
+		thread.start()
+
+	def command_tgoff(self, arguments):
+		"""stop trafgen; tg2 SIGTERM handling workaround"""
+
+		# while tg2 itself has not correct SIGTERM handling implementation (does not terminate it's subprocesses)
+		# we have to deliver INT to the corresponding process
+		for thread in threading.enumerate():
+			if thread.name == "tg2":
+				os.killpg(os.getpgid(thread.process.pid), signal.SIGINT)
 
 
 
