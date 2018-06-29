@@ -16,27 +16,27 @@ rreturn() {
 
 
 random_byte() {
-	python -c "import random; print random.randint(0,255)"
+	python2 -c "import random; print random.randint(0,255)"
 }
 
 
 random_int() {
-	python -c "import random; print random.randint(0,65535)"
+	python2 -c "import random; print random.randint(0,65535)"
 }
 
 
 random_mac() {
-	python -c "import random; print ':'.join(['%02x' % random.randint(0,255) for x in range(6)])"
+	python2 -c "import random; print ':'.join(['%02x' % random.randint(0,255) for x in range(6)])"
 }
 
 
 random_ip4() {
-	python -c "import random; print '.'.join([str(random.randint(0,255)) for x in range(4)])"
+	python2 -c "import random; print '.'.join([str(random.randint(0,255)) for x in range(4)])"
 }
 
 
 random_ip6() {
-	python -c "import random; print ':'.join(['%x'%random.randint(0,65025) for x in range(8)])"
+	python2 -c "import random; print ':'.join(['%x'%random.randint(0,65025) for x in range(8)])"
 }
 
 
