@@ -12,23 +12,30 @@ import time
 # npyscreen based ui, Formed application having single main active form with
 # simple action controller passing all commands from textbox to the parent
 # application
+#
+# caveat: current ui cannot be fully resized due to npyscreen impl
 
 class FormedActionController(npyscreen.ActionControllerSimple):
 	"""action controller, used to pass commands from main form commandline/textcommandbox"""
 
 	def create(self):
-		self.add_action("quit", self.do_quit, live=False)
-		self.add_action(".*", self.do_command, live=False)
+		self.add_action(".*", self.handle_command, live=False)
 
-	def do_quit(self, command_line, widget_proxy, live): # pylint: disable=unused-argument,no-self-use
-		"""emit shutdown"""
+	def handle_command(self, command_line, widget_proxy, live): # pylint: disable=unused-argument
+		"""handle command submitted from ui command line"""
 
-		raise KeyboardInterrupt
+		if command_line == "quit":
+			# emit shutdown
+			raise KeyboardInterrupt
 
-	def do_command(self, command_line, widget_proxy, live): # pylint: disable=unused-argument
-		"""process entered command"""
-		# here might be some handling of ui.Formed command vs mastershell commands routing
-		self.parent.parentApp.command_handler(command_line)
+		elif command_line == "clear":
+			# clear wmain
+			self.parent.w_main.clearBuffer()
+			self.parent.w_main.display()
+
+		else:
+			# process entered command
+			self.parent.parentApp.command_handler(command_line)
 
 
 # originaly taken from FormMuttActive
