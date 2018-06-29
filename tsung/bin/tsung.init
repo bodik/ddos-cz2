@@ -1,7 +1,7 @@
 #!/bin/sh
 
 NODES=tsung.nodes
-BOOTSTRAP="https://haas.cesnet.cz/ddos-cz2.git/bootstrap.sh"
+BOOTSTRAP="https://rsyslog.metacentrum.cz/ddos-cz2.git/bootstrap.sh"
 
 if [ ! -s "$NODES" ]; then
 	echo "File $NODES not exists or empty!"
