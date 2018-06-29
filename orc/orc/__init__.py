@@ -156,7 +156,7 @@ class Slave(object):
 	def command_tlist(self, arguments): # pylint: disable=unused-argument
 		"""list current process threads"""
 
-		data = [{"name": thread.name, "ident": thread.ident} for thread in threading.enumerate()]
+		data = [{"name": thread.name, "ident": thread.ident, "arguments": getattr(thread, "arguments", None)} for thread in threading.enumerate()]
 		self.communicator.send_message({"Type": "tlist", "Message": data})
 
 
@@ -252,5 +252,5 @@ class Master(object):
 		if command:
 			cmd = shlex.split(command)
 			obj = {"Type": "command", "Message": {"command": cmd[0], "arguments": cmd[1:]}}
-			self.communicator.send_message(obj)
-			self.console.wmain_add_line("[%20s]> %s" % (self.communicator.identity, obj))
+			obj = self.communicator.send_message(obj)
+			self.console.handle_message(obj)

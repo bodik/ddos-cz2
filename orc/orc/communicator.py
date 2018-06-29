@@ -152,4 +152,4 @@ class CommunicatorThread(threading.Thread):
 			self.log.warning(e)
 			return False
 
-		return True
+		return obj

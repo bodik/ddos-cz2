@@ -8,6 +8,11 @@ import npyscreen
 import time
 
 
+## ui.Formed*
+# npyscreen based ui, Formed application having single main active form with
+# simple action controller passing all commands from textbox to the parent
+# application
+
 class FormedActionController(npyscreen.ActionControllerSimple):
 	"""action controller, used to pass commands from main form commandline/textcommandbox"""
 
@@ -26,9 +31,13 @@ class FormedActionController(npyscreen.ActionControllerSimple):
 		self.parent.parentApp.command_handler(command_line)
 
 
-
+# originaly taken from FormMuttActive
 class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ancestors
 	"""main app form"""
+
+	#https://npyscreen.readthedocs.io/form-objects.html#resizing-forms-new-in-version-2-0pre88
+	#does not work well, probably work in progress
+	#FIX_MINIMUM_SIZE_WHEN_CREATED = False
 
 	BLANK_LINES_BASE = 0
 
@@ -57,7 +66,7 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 
 
 	def create(self):
-		maxy = self.lines
+		maxy, maxx = self.lines, self.columns
 
 		self.w_netstat = self.add(self.NETSTAT_WIDGET_CLASS, rely=0, relx=0, height=self.NETSTAT_WIDGET_HEIGHT, editable=False)
 
@@ -65,26 +74,22 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 		self.w_status1.value = "status 1"
 		self.w_status1.important = True
 
-		self.w_main = self.add(self.MAIN_WIDGET_CLASS, rely=self.MAIN_WIDGET_CLASS_START_LINE, relx=0, max_height=-2)
+		self.w_main = self.add(self.MAIN_WIDGET_CLASS, rely=self.MAIN_WIDGET_CLASS_START_LINE, relx=0, max_height=-2, autowrap=True, max_width=maxx-3)
 
 		self.w_status2 = self.add(self.STATUS_WIDGET_CLASS, rely=maxy-2-self.BLANK_LINES_BASE, relx=self.STATUS_WIDGET_X_OFFSET, editable=False)
 		self.w_status2.value = "status 2"
 		self.w_status2.important = True
 
-		self.w_command = self.add(self.COMMAND_WIDGET_CLASS, rely=maxy-1-self.BLANK_LINES_BASE, relx=0, history=True, history_max=1000, set_up_history_keys=True)
+		self.w_command = self.add( \
+			self.COMMAND_WIDGET_CLASS, rely=maxy-1-self.BLANK_LINES_BASE, relx=0,
+			history=True, history_max=1000, set_up_history_keys=True)
 
 		self.nextrely = 2
 
 
-	def h_display(self, inputx): # pylint: disable=arguments-differ
-		super(FormedForm, self).h_display(inputx)
-		if hasattr(self, "w_main"):
-			if not self.w_main.hidden:
-				self.w_main.display()
-
-
 	def resize(self):
 		super(FormedForm, self).resize()
+
 		maxy = self.lines
 		self.w_status1.rely = self.NETSTAT_WIDGET_HEIGHT
 		self.w_status2.rely = maxy-2-self.BLANK_LINES_BASE
@@ -125,7 +130,7 @@ class Formed(npyscreen.NPSAppManaged):
 
 	## application interface
 	def handle_message(self, message):
-		"""handle message, called from outr app"""
+		"""handle message, called from outer app on received message from the comm layer"""
 
 		if message["Type"] == "netstat":
 			self.wnetstat_update(message["Node"], message["Message"])
@@ -133,6 +138,9 @@ class Formed(npyscreen.NPSAppManaged):
 			self.wmain_add_line("[%20s] %s" % (message["Node"], message["Message"]))
 
 
+
+## ui.Listener
+# prints out full stream of messages from comm layer
 
 class Listener(object):
 	"""listener ui class"""
@@ -156,6 +164,9 @@ class Listener(object):
 
 
 
+## ui.Commander
+# separate commandline for sending messages to comm layer
+
 class Commander(cmd.Cmd):
 	"""commander ui class"""
 
@@ -166,28 +177,32 @@ class Commander(cmd.Cmd):
 		self.command_handler = command_handler
 		self.log = logging.getLogger()
 
+
+	def complete(self, text, state):
+		pass
+	def do_help(self, arg):
+		pass
+
+
 	def default(self, line):
 		return self.command_handler(line)
 
+
 	def do_quit(self, arg): # pylint: disable=unused-argument,no-self-use
 		"""quit"""
-
 		return True
 
 	def do_EOF(self, arg): # pylint: disable=unused-argument,no-self-use,invalid-name
 		"""quit"""
-
 		return True
 
 
 	## application interface
 	def run(self):
 		"""class main"""
-
 		self.cmdloop()
 
 
 	def handle_message(self, message): # pylint: disable=unused-argument,no-self-use
 		"""handle message, called from outer app"""
-
 		pass
