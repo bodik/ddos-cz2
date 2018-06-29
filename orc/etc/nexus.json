@@ -1,0 +1,27 @@
+{
+	"websocket": {
+		"address": ":56000",
+		"cert_file": "",
+		"key_file": "",
+		"enable_compression": false,
+		"allow_origins": []
+	},
+	"log_path": "",
+	"router": {
+		"realms": [
+			{
+				"uri": "orc1",
+				"strict_uri": false,
+				"allow_disclose": true,
+				"anonymous_auth": true
+			},
+			{
+				"uri": "orc2",
+				"strict_uri": false,
+				"allow_disclose": true,
+				"anonymous_auth": true
+			}
+		],
+		"debug": true
+	}
+}

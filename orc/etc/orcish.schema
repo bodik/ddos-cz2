@@ -1,0 +1,30 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"description": "global schema description",
+	"type": "object",
+	"required": ["Id", "Type", "Node"],
+
+	"definitions": {
+		"Id": {
+			"description": "uuid",
+			"type": "string",
+			"pattern": "^[a-zA-Z0-9._-]+$"
+		}
+	},
+
+	"properties": {
+		"Id": {
+			"description": "Unique message identifier.",
+			"$ref": "#/definitions/Id"
+		},
+		"Type": {
+			"description": "message type",
+			"type": "string"
+		},
+		"Node": {
+			"type": "string",
+			"description": "name node emiting the message"
+		},
+		"Message": {}
+        }
+}

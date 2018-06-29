@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 import argparse
 import logging
@@ -7,6 +7,7 @@ import sys
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
 logger = logging.getLogger()
+sys.tracebacklimit = None
 
 
 def parse_arguments():
@@ -75,8 +76,7 @@ def stats_rxtx_read(iface):
 			"rx": dict(zip(["bytes", "packets", "errs", "drop", "fifo", "frame", "compressed", "multicast"], map(int, line.split()[1:8]))),
 			"tx": dict(zip(["bytes", "packets", "errs", "drop", "fifo", "colls", "carrier", "compressed"], map(int, line.split()[9:16])))}
 	else:
-		logger.error("interface statistics not found")
-		return False
+		raise RuntimeError("interface statistics not found")
 
 	logger.debug(stats)
 	return stats
@@ -134,10 +134,11 @@ def main():
 	args = parse_arguments()
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
+		sys.tracebacklimit = 0
 
 	try:
 		while True:
-			print stats(args.iface, args.time, args.csv)
+			print(stats(args.iface, args.time, args.csv))
 	except KeyboardInterrupt:
 		pass
 
