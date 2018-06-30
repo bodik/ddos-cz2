@@ -5,6 +5,7 @@ import cmd
 import curses
 import logging
 import npyscreen
+import os
 import time
 
 
@@ -14,6 +15,9 @@ import time
 # application
 #
 # caveat: current ui cannot be fully resized due to npyscreen impl
+
+class FormedQuitException(Exception):
+	pass
 
 class FormedActionController(npyscreen.ActionControllerSimple):
 	"""action controller, used to pass commands from main form commandline/textcommandbox"""
@@ -26,7 +30,7 @@ class FormedActionController(npyscreen.ActionControllerSimple):
 
 		if command_line == "quit":
 			# emit shutdown
-			raise KeyboardInterrupt
+			raise FormedQuitException
 
 		elif command_line == "clear":
 			# clear wmain
@@ -84,7 +88,7 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 		self.w_main = self.add(self.MAIN_WIDGET_CLASS, rely=self.MAIN_WIDGET_CLASS_START_LINE, relx=0, max_height=-2, autowrap=True, max_width=maxx-3)
 
 		self.w_status2 = self.add(self.STATUS_WIDGET_CLASS, rely=maxy-2-self.BLANK_LINES_BASE, relx=self.STATUS_WIDGET_X_OFFSET, editable=False)
-		self.w_status2.value = "status 2"
+		self.w_status2.value = self.parentApp.w_status2_text
 		self.w_status2.important = True
 
 		self.w_command = self.add( \
@@ -107,17 +111,38 @@ class FormedForm(npyscreen.fmForm.FormBaseNew): # pylint: disable=too-many-ances
 class Formed(npyscreen.NPSAppManaged):
 	"""main formed application"""
 
-	def __init__(self, command_handler, *args, **kwargs):
+
+	def __init__(self, w_status2_text, command_handler,*args, **kwargs):
 		super(Formed, self).__init__(*args, **kwargs)
+		self.log = logging.getLogger()
+		self.w_status2_text = w_status2_text
 		self.command_handler = command_handler
+		self.command_history_file = os.path.expanduser("~/.orc_history")
 		self.form = None
 		self.netstat_data = {}
 
 
 	def onStart(self):
 		#npyscreen.setTheme(npyscreen.Themes.TransparentThemeDarkText)
-		self.form = self.addForm('MAIN', FormedForm)
 		curses.mousemask(0)
+		self.form = self.addForm('MAIN', FormedForm)
+
+		if os.path.exists(self.command_history_file):
+			with open(self.command_history_file, "r") as ftmp:
+				self.form.w_command._history_store = [x for x in ftmp.read().splitlines()]
+
+
+	def run(self, *args, **kwargs):
+		try:
+			super(Formed, self).run(*args, **kwargs)
+		except (FormedQuitException, KeyboardInterrupt):
+			pass
+
+		try:
+			with open(self.command_history_file, "w") as ftmp:
+				ftmp.write(os.linesep.join(self.form.w_command._history_store))
+		except Exception as e:
+			self.log.warn(e)
 
 
 	def wmain_add_line(self, line):

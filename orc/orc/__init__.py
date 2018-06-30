@@ -225,7 +225,7 @@ class Master(object):
 		self.communicator.start()
 
 		if args.ui == "formed":
-			self.console = orc.ui.Formed(self.handle_command)
+			self.console = orc.ui.Formed("[%s] %s %s" % (args.identity, args.server, args.realm), self.handle_command)
 
 		if args.ui == "listener":
 			self.console = orc.ui.Listener()
