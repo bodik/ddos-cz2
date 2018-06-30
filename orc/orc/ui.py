@@ -208,7 +208,7 @@ class Commander(cmd.Cmd):
 		super(Commander, self).__init__(*args, **kwargs)
 		self.command_handler = command_handler
 		self.log = logging.getLogger()
-
+		self.history_file = os.path.expanduser("~/.orc_history")
 
 	def complete(self, text, state):
 		pass
@@ -232,7 +232,23 @@ class Commander(cmd.Cmd):
 	## application interface
 	def run(self):
 		"""class main"""
-		self.cmdloop()
+
+		try:
+			import readline
+			readline.read_history_file(self.history_file)
+		except Exception:
+			pass
+
+		try:
+			self.cmdloop()
+		except KeyboardInterrupt:
+			pass
+
+		try:
+			import readline
+			readline.write_history_file(self.history_file)
+		except Exception:
+			pass
 
 
 	def handle_message(self, message): # pylint: disable=unused-argument,no-self-use
