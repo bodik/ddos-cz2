@@ -37,7 +37,7 @@ check_value "ICMP.type: 8"
 check_value "ICMP.code: 0"
 check_value "ICMP.id: ${ICMPECHO_IDENTIFIER}"
 check_value "ICMP.seq: ${ICMPECHO_SEQUENCE_NUMBER}"
-check_value "Raw.load: '${ICMPECHO_DATA}'"
+check_value "Raw.load: b'${ICMPECHO_DATA}'"
 
 
 

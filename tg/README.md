@@ -2,10 +2,9 @@
 
 ## Requirements
 
-* `python-pyroute2`
-* `python-scapy`
+* `python3-pyroute2`
+* `python3-scapy`
 * `cpp`
-* `python-ipaddress`
 
 
 ## Run

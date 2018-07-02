@@ -45,6 +45,7 @@ class Runner(object):
 	def __init__(self, generator, fields):
 		"""initialize fields, run all layers postprocessors, generator specific postprocessing"""
 
+		self.executor = None
 		self.generator = generator
 		self.fields = fields
 
@@ -84,7 +85,7 @@ class Runner(object):
 		"""run trafgen"""
 
 		# write config to filesystem
-		ftmp = tempfile.NamedTemporaryFile(prefix="tg2_generator_", delete=False)
+		ftmp = tempfile.NamedTemporaryFile(mode="w", prefix="tg2_generator_", delete=False)
 		ftmp_name = ftmp.name
 		ftmp.write(self.compile())
 		ftmp.close()
@@ -94,16 +95,14 @@ class Runner(object):
 		cmd = [trafgen_bin, "--in", ftmp_name, "--out", self.fields["dev"], "--cpp"]
 		for arg in [x for x in ["num", "gap", "rate"] if self.fields[x]]:
 			cmd += ["--%s" % arg, str(self.fields[arg])]
-
 		logging.debug(cmd)
-		try:
-			if self.fields["time"]:
-				ret = tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
-			else:
-				ret = tg.runner.TimedExecutor().execute_once(cmd)
-		except KeyboardInterrupt:
-			logging.info("aborted by user")
-			ret = 0
+
+		self.executor = tg.runner.TimedExecutor(cmd, self.fields["time"])
+		signal.signal(signal.SIGTERM, self.executor.teardown)
+		signal.signal(signal.SIGINT, self.executor.teardown)
+		self.executor.start()
+		self.executor.join()
+		ret = self.executor.process.returncode
 
 		# cleanup
 		if ret == 0:
@@ -114,50 +113,66 @@ class Runner(object):
 
 
 
-class TimedExecutor(object):
+class TimedExecutor(threading.Thread):
 	"""timed executor, repeat execution/terminate process for/after specified time"""
 
-	def __init__(self):
+	def __init__(self, cmd, seconds=None):
+		super(TimedExecutor, self).__init__()
+		self.setDaemon(True)
+		self.name = "TimedExecutor"
+		self.log = logging.getLogger()
+
+		self.cmd = cmd
+		self.seconds = seconds
+
 		self.process = None
 		self.timer = None
 		self.timer_finished = None # signal from timer
 		self.timer_terminate = None # signal to timer
 
 
-	def execute_once(self, cmd):
+	def run(self):
+		if not self.seconds:
+			self.execute_once()
+		else:
+			self.execute_timed()
+
+
+	def execute_once(self):
 		"""execute once"""
+
 		try:
-			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
+			self.process = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 			(process_stdout, process_stderr) = self.process.communicate()
 			if process_stdout:
-				logging.debug(process_stdout.strip())
+				self.log.debug(process_stdout.strip())
 			if process_stderr:
-				logging.error(process_stderr.strip())
+				self.log.error(process_stderr.strip())
 			if self.process.returncode != 0:
-				logging.error("exit code %s", self.process.returncode)
-		except (Exception, KeyboardInterrupt) as e:
+				self.log.error("exit code %s", self.process.returncode)
+		except Exception as e:
 			self.terminate_process()
 			if self.process.returncode != 0:
-				logging.error("exit code %s", self.process.returncode)
+				self.log.error("exit code %s", self.process.returncode)
 			raise e
 
 		return self.process.returncode
 
 
-	def execute(self, cmd, seconds):
+	def execute_timed(self):
 		"""setup timer and execute until timer finishes"""
 
-		if seconds < 1:
+		if self.seconds < 1:
 			raise ValueError("timer too low")
-		self.process = None
-		self.timer = threading.Thread(name="TimedExecutorTimer", target=self.timer_thread, args=(seconds,))
+		self.process = None # ???
+		self.timer = threading.Thread(name="TimedExecutorTimer", target=self.timer_thread, args=(self.seconds,))
 		self.timer.setDaemon(True)
 		self.timer_finished = False
 		self.timer_terminate = False
 		self.timer.start()
 
 		while not self.timer_finished:
-			self.execute_once(cmd)
+			self.execute_once()
 			if self.process.returncode != 0:
 				break
 
@@ -179,13 +194,21 @@ class TimedExecutor(object):
 	def timer_thread(self, seconds):
 		"""actively wait for timeout and end running process"""
 
-		logging.debug("%s begin", self.__class__.__name__)
+		self.log.debug("%s begin", threading.current_thread().name)
 		while seconds > 0:
 			time.sleep(1)
 			seconds -= 1
 			if self.timer_terminate:
 				break
 		self.timer_finished = True
-		logging.debug("%s end", self.__class__.__name__)
+		self.log.debug("%s end", threading.current_thread().name)
 
+		self.terminate_process()
+
+
+	def teardown(self, signum=None, frame=None):
+		"""called by signal or external entitites to shutdown the executor"""
+
+		self.log.info("aborted by signal")
+		self.timer_terminate = True
 		self.terminate_process()

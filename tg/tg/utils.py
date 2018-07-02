@@ -103,7 +103,7 @@ def trafgen_format_ip(ipaddr):
 		return ipaddr.replace(".", ",")
 
 	if ipaddr.count(":") >= 2:
-		return ",".join(["c16(0x%s)" % hextet for hextet in ipaddress.IPv6Address(unicode(ipaddr, "utf-8")).exploded.split(":")])
+		return ",".join(["c16(0x%s)" % hextet for hextet in ipaddress.IPv6Address(ipaddr).exploded.split(":")])
 
 	raise ValueError("invalid ipaddr")
 
@@ -118,7 +118,7 @@ def parse_time(data):
 		raise ValueError("invalid time")
 	parts = parts.groupdict()
 	time_params = {}
-	for (name, param) in parts.iteritems():
+	for (name, param) in parts.items():
 		if param:
 			time_params[name] = int(param)
 	return datetime.timedelta(**time_params).total_seconds()

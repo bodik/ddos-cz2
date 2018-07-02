@@ -14,7 +14,7 @@ cat ${TESTID_FILE_DISPLAYED}
 
 
 
-check_value "Raw.load: '\\\\x00\\\\x01\\\\x02\\\\x03'"
+check_value "Raw.load: b'\\\\x00\\\\x01\\\\x02\\\\x03'"
 
 
 

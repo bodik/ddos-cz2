@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """tg python trafgen wrapper"""
 
 import argparse
@@ -27,14 +27,14 @@ def parse_arguments():
 def main():
 	"""main"""
 	args = parse_arguments()
-	if args.debug:
+	if hasattr(args, "debug") and args.debug:
 		logger.setLevel(logging.DEBUG)
 
 	runner = tg.runner.Runner(getattr(tg, args.generator), args.__dict__)
 	logger.debug("generator fields: %s", runner.fields)
 
 	if args.dump:
-		print runner.compile()
+		print(runner.compile())
 		ret = 0
 	else:
 		ret = runner.run()

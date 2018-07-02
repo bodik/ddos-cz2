@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import argparse
 import logging
@@ -28,17 +28,17 @@ def display(packets):
 		for layer in expand(packet):
 			for field in layer.fields:
 				if layer.name == "Raw":
-					print "%s: %s" % ("Raw.load", repr(layer.load))
+					print("%s: %s" % ("Raw.load", repr(layer.load)))
 				elif (layer.name == "TCP") and (field == "flags"):
-					print "%s.%s: %s [%s]" % (layer.name, field, layer.flags, layer.sprintf('%TCP.flags%'))
+					print("%s.%s: %s [%s]" % (layer.name, field, layer.flags, layer.sprintf('%TCP.flags%')))
 				else:
-					print "%s.%s: %s" % (layer.name, field, layer.fields[field])
+					print("%s.%s: %s" % (layer.name, field, layer.fields[field]))
 	return 0
 
 
 
 def summary(packets):
-	print "scapy_display.summary.count: %d" % len(packets)
+	print("scapy_display.summary.count: %d" % len(packets))
 	return 0
 
 
