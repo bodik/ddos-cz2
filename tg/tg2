@@ -16,6 +16,7 @@ def parse_arguments():
 
 	parser = argparse.ArgumentParser()
 	parser_command = parser.add_subparsers(dest="generator", help="generator name")
+	parser_command.required = True # python3 subparsers flapping about default require value, and require kwarg
 
 	for cls in tg.modreg.registered_classes:
 		tg.runner.Runner.build_arguments_parser(parser_command.add_parser(cls.__name__), cls)
@@ -26,8 +27,9 @@ def parse_arguments():
 
 def main():
 	"""main"""
+
 	args = parse_arguments()
-	if hasattr(args, "debug") and args.debug:
+	if args.debug:
 		logger.setLevel(logging.DEBUG)
 
 	runner = tg.runner.Runner(getattr(tg, args.generator), args.__dict__)

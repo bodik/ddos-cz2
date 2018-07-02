@@ -45,7 +45,6 @@ class Runner(object):
 	def __init__(self, generator, fields):
 		"""initialize fields, run all layers postprocessors, generator specific postprocessing"""
 
-		self.executor = None
 		self.generator = generator
 		self.fields = fields
 
@@ -97,12 +96,10 @@ class Runner(object):
 			cmd += ["--%s" % arg, str(self.fields[arg])]
 		logging.debug(cmd)
 
-		self.executor = tg.runner.TimedExecutor(cmd, self.fields["time"])
-		signal.signal(signal.SIGTERM, self.executor.teardown)
-		signal.signal(signal.SIGINT, self.executor.teardown)
-		self.executor.start()
-		self.executor.join()
-		ret = self.executor.process.returncode
+		executor = tg.runner.TimedExecutor()
+		signal.signal(signal.SIGTERM, executor.teardown)
+		signal.signal(signal.SIGINT, executor.teardown)
+		ret = executor.execute(cmd, self.fields["time"])
 
 		# cleanup
 		if ret == 0:
@@ -113,36 +110,29 @@ class Runner(object):
 
 
 
-class TimedExecutor(threading.Thread):
+class TimedExecutor():
 	"""timed executor, repeat execution/terminate process for/after specified time"""
 
-	def __init__(self, cmd, seconds=None):
-		super(TimedExecutor, self).__init__()
-		self.setDaemon(True)
-		self.name = "TimedExecutor"
+	def __init__(self):
 		self.log = logging.getLogger()
-
-		self.cmd = cmd
-		self.seconds = seconds
-
 		self.process = None
 		self.timer = None
 		self.timer_finished = None # signal from timer
 		self.timer_terminate = None # signal to timer
 
 
-	def run(self):
-		if not self.seconds:
-			self.execute_once()
+	def execute(self, cmd, seconds=None):
+		if seconds:
+			return self.execute_timed(cmd, seconds)
 		else:
-			self.execute_timed()
+			return self.execute_once(cmd)
 
 
-	def execute_once(self):
+	def execute_once(self, cmd):
 		"""execute once"""
 
 		try:
-			self.process = subprocess.Popen(self.cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
+			self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, preexec_fn=os.setsid)
 			(process_stdout, process_stderr) = self.process.communicate()
 			if process_stdout:
 				self.log.debug(process_stdout.strip())
@@ -159,20 +149,20 @@ class TimedExecutor(threading.Thread):
 		return self.process.returncode
 
 
-	def execute_timed(self):
+	def execute_timed(self, cmd, seconds):
 		"""setup timer and execute until timer finishes"""
 
-		if self.seconds < 1:
+		if seconds < 1:
 			raise ValueError("timer too low")
 		self.process = None # ???
-		self.timer = threading.Thread(name="TimedExecutorTimer", target=self.timer_thread, args=(self.seconds,))
+		self.timer = threading.Thread(name="TimedExecutorTimer", target=self.timer_thread, args=(seconds,))
 		self.timer.setDaemon(True)
 		self.timer_finished = False
 		self.timer_terminate = False
 		self.timer.start()
 
 		while not self.timer_finished:
-			self.execute_once()
+			self.execute_once(cmd)
 			if self.process.returncode != 0:
 				break
 
