@@ -96,10 +96,7 @@ class Runner(object):
 			cmd += ["--%s" % arg, str(self.fields[arg])]
 		logging.debug(cmd)
 
-		executor = tg.runner.TimedExecutor()
-		signal.signal(signal.SIGTERM, executor.teardown)
-		signal.signal(signal.SIGINT, executor.teardown)
-		ret = executor.execute(cmd, self.fields["time"])
+		ret = tg.runner.TimedExecutor().execute(cmd, self.fields["time"])
 
 		# cleanup
 		if ret == 0:
@@ -124,10 +121,19 @@ class TimedExecutor():
 	def execute(self, cmd, seconds=None):
 		"""execute command"""
 
+		signal_handler_sigterm = signal.getsignal(signal.SIGTERM)
+		signal_handler_sigint = signal.getsignal(signal.SIGINT)
+		signal.signal(signal.SIGTERM, self.teardown)
+		signal.signal(signal.SIGINT, self.teardown)
+
 		if seconds:
 			ret = self.execute_timed(cmd, seconds)
 		else:
 			ret = self.execute_once(cmd)
+
+		signal.signal(signal.SIGTERM, signal_handler_sigterm)
+		signal.signal(signal.SIGINT, signal_handler_sigint)
+
 		return ret
 
 
@@ -207,4 +213,5 @@ class TimedExecutor():
 
 		self.log.info("aborted by signal")
 		self.timer_terminate = True
+		self.timer_finished = True
 		self.terminate_process()
