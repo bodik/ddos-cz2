@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """runner module"""
 
 import logging

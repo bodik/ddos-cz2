@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """tg utils module"""
 
 import datetime

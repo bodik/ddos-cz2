@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """generators implementation"""
 
 import tg

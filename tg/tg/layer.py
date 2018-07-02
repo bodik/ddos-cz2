@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """layers implementation"""
 
 import socket
