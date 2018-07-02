@@ -170,7 +170,7 @@ class Slave(object):
 	def command_non(self, arguments):
 		"""start netstat thread"""
 
-		thread = ExecThread(self.communicator, ["python3", "-u", "../tg/bin/netstat.py"] + arguments, "netstat")
+		thread = ExecThread(self.communicator, ["/usr/bin/python3", "-u", "../tg/bin/netstat.py"] + arguments, "netstat")
 		thread.name = "netstat"
 		thread.start()
 
@@ -186,18 +186,16 @@ class Slave(object):
 	def command_tg(self, arguments):
 		"""start trafgen shortcut"""
 
-		thread = ExecThread(self.communicator, ["python2", "-u", "../tg/tg2"] + arguments, "tg2")
+		thread = ExecThread(self.communicator, ["/usr/bin/python3", "-u", "../tg/tg2"] + arguments, "tg2")
 		thread.name = "tg2"
 		thread.start()
 
 	def command_tgoff(self, arguments):
-		"""stop trafgen; tg2 SIGTERM handling workaround"""
+		"""stop all trafgen"""
 
-		# while tg2 itself has not correct SIGTERM handling implementation (does not terminate it's subprocesses)
-		# we have to deliver INT to the corresponding process
 		for thread in threading.enumerate():
 			if thread.name == "tg2":
-				os.killpg(os.getpgid(thread.process.pid), signal.SIGINT)
+				os.killpg(os.getpgid(thread.process.pid), signal.SIGTERM)
 
 
 

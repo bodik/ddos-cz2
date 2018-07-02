@@ -53,9 +53,9 @@ def interface_gateway_ip(iface_name, family=socket.AF_INET):
 def arping(ipaddr, iface_name):
 	"""generates arp request on interface for ip address"""
 
-	source_mac = interface_mac(iface_name).replace(":", "").decode("hex")
+	source_mac = bytes.fromhex(interface_mac(iface_name).replace(":", ""))
 	source_address = interface_ip(iface_name)
-	destination_mac = "\xff\xff\xff\xff\xff\xff"
+	destination_mac = b"\xff\xff\xff\xff\xff\xff"
 	destination_address = ipaddr
 
 	# eth = dmac, smac, eth_type_protocol
