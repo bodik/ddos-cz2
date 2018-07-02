@@ -180,7 +180,10 @@ class TimedExecutor():
 
 		self.process.poll()
 		if self.process.returncode is None:
-			os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+			try:
+				os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+			except Exception as e:
+				self.log.error(e)
 			self.process.wait()
 
 
