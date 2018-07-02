@@ -17,6 +17,8 @@ wait ${PID}
 grep "communicator joined .* SessionDetails(realm=<testrealm>" ${TMPLOG}
 if [ $? -ne 0 ]; then
 	router_stop
+
+	cat ${TMPLOG}
 	rreturn 1 "$0 master listener not joined"
 fi
 
@@ -26,6 +28,8 @@ echo "quit" | ${BASEDIR}/master --server ws://localhost:${ROUTER_PORT} --realm t
 grep "communicator joined .* SessionDetails(realm=<testrealm>" ${TMPLOG}
 if [ $? -ne 0 ]; then
 	router_stop
+
+	cat ${TMPLOG}
 	rreturn 1 "$0 master commander not joined"
 fi
 
