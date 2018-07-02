@@ -48,6 +48,8 @@ def interface_gateway_ip(iface_name, family=socket.AF_INET):
 		if route.get_attr("RTA_OIF") == iface_index and route.get_attr("RTA_GATEWAY"):
 			return route.get_attr("RTA_GATEWAY")
 
+	return None
+
 
 
 def arping(ipaddr, iface_name):

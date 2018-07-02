@@ -122,10 +122,13 @@ class TimedExecutor():
 
 
 	def execute(self, cmd, seconds=None):
+		"""execute command"""
+
 		if seconds:
-			return self.execute_timed(cmd, seconds)
+			ret = self.execute_timed(cmd, seconds)
 		else:
-			return self.execute_once(cmd)
+			ret = self.execute_once(cmd)
+		return ret
 
 
 	def execute_once(self, cmd):
@@ -196,7 +199,7 @@ class TimedExecutor():
 		self.terminate_process()
 
 
-	def teardown(self, signum=None, frame=None):
+	def teardown(self, signum=None, frame=None): # pylint: disable=unused-argument
 		"""called by signal or external entitites to shutdown the executor"""
 
 		self.log.info("aborted by signal")

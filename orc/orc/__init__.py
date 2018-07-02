@@ -194,7 +194,7 @@ class Slave(object):
 		thread.name = "tg2"
 		thread.start()
 
-	def command_tgoff(self, arguments):
+	def command_tgoff(self, arguments): # pylint: disable=no-self-use,unused-argument
 		"""stop all trafgen"""
 
 		for thread in threading.enumerate():

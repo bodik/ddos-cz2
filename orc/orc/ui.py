@@ -17,6 +17,7 @@ import time
 # caveat: current ui cannot be fully resized due to npyscreen impl
 
 class FormedQuitException(Exception):
+	"""custom exception to handle correct application quit from command-line"""
 	pass
 
 class FormedActionController(npyscreen.ActionControllerSimple):
@@ -112,7 +113,7 @@ class Formed(npyscreen.NPSAppManaged):
 	"""main formed application"""
 
 
-	def __init__(self, w_status2_text, command_handler,*args, **kwargs):
+	def __init__(self, w_status2_text, command_handler, *args, **kwargs):
 		super(Formed, self).__init__(*args, **kwargs)
 		self.log = logging.getLogger()
 		self.w_status2_text = w_status2_text
@@ -129,20 +130,20 @@ class Formed(npyscreen.NPSAppManaged):
 
 		if os.path.exists(self.command_history_file):
 			with open(self.command_history_file, "r") as ftmp:
-				self.form.w_command._history_store = [x for x in ftmp.read().splitlines()]
+				self.form.w_command._history_store = [x for x in ftmp.read().splitlines()] # pylint: disable=protected-access
 
 
-	def run(self, *args, **kwargs):
+	def run(self, fork=None):
 		try:
-			super(Formed, self).run(*args, **kwargs)
+			super(Formed, self).run(fork)
 		except (FormedQuitException, KeyboardInterrupt):
 			pass
 
 		try:
 			with open(self.command_history_file, "w") as ftmp:
-				ftmp.write(os.linesep.join(self.form.w_command._history_store))
+				ftmp.write(os.linesep.join(self.form.w_command._history_store)) # pylint: disable=protected-access
 		except Exception as e:
-			self.log.warn(e)
+			self.log.warning(e)
 
 
 	def wmain_add_line(self, line):
