@@ -62,17 +62,21 @@ class ExecThread(threading.Thread):
 	def run(self):
 		self.log.info("%s thread begin", self.name)
 
-		self.process = subprocess.Popen(self.arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setsid)
+		try:
+			self.process = subprocess.Popen(self.arguments, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, preexec_fn=os.setsid)
 
-		while not self.shutdown:
-			line = self.process.stdout.readline().rstrip().decode("utf-8")
-
-			self.process.poll()
-			if (not line) and (self.process.returncode is not None):
-				break
-
-			obj = {"Type": self.message_type, "Message": line}
+			while not self.shutdown:
+				line = self.process.stdout.readline().rstrip().decode("utf-8")
+				self.process.poll()
+				if (not line) and (self.process.returncode is not None):
+					break
+				obj = {"Type": self.message_type, "Message": line}
+				self.communicator.send_message(obj)
+		except Exception as e:
+			self.log.error(e)
+			obj = {"Type": self.message_type, "Message": str(e)}
 			self.communicator.send_message(obj)
+
 
 		self.log.info("%s thread end", self.name)
 
