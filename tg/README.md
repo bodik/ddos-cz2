@@ -2,6 +2,7 @@
 
 ## Requirements
 
+* `python3`
 * `python3-pyroute2`
 * `python3-scapy`
 * `cpp`

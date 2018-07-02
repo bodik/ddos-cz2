@@ -19,6 +19,10 @@ client/server agent system for coordinating distributed network of nodes
     * any other command is interpreted as command to send to the network
 
 
+## requirements
+
+* `python3`
+
 ## usage
 
 ```
