@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""low overhead network statistic"""
 
 import argparse
 import logging
@@ -25,20 +26,20 @@ def parse_arguments():
 
 
 def sizeof_fmt(num, suffix="B"):
-        """convert to human readable form"""
+	"""convert to human readable form"""
 
-        for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
-                if abs(num) < 1000.0:
-                        return "%3.1f %1s%s" % (num, unit, suffix)
-                num /= 1000.0
-        return "%.1f %1s%s" % (num, "Y", suffix)
+	for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+		if abs(num) < 1000.0:
+			return "%3.1f %1s%s" % (num, unit, suffix)
+		num /= 1000.0
+	return "%.1f %1s%s" % (num, "Y", suffix)
 
 
 
 def stats_tcp_read():
 	"""read tcp stats from proc"""
 
-	# https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/tree/include/net/tcp_states.h	
+	# https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/tree/include/net/tcp_states.h
 	tran = [ \
 		"padding", "TCP_ESTABLISHED", "TCP_SYN_SENT", "TCP_SYN_RECV", "TCP_FIN_WAIT1", "TCP_FIN_WAIT2",
 		"TCP_TIME_WAIT", "TCP_CLOSE", "TCP_CLOSE_WAIT", "TCP_LAST_ACK", "TCP_LISTEN",
@@ -64,8 +65,9 @@ def stats_rxtx_read(iface):
 	"""read rxtx stats from proc"""
 
 	ftmp = open("/proc/net/dev", "r")
-	for line in [x.strip() for x in ftmp.readlines()]:
-		if line.startswith("%s:" % iface):
+	for tmpline in [x.strip() for x in ftmp.readlines()]:
+		if tmpline.startswith("%s:" % iface):
+			line = tmpline
 			break
 		line = None
 
@@ -73,25 +75,28 @@ def stats_rxtx_read(iface):
 		# face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
 		#eth0: 76594958  122515    7    0    0     0          0         0 72115331  110248    0    0    0     0       0          0
 		logger.debug(line)
-		stats = { \
+		ret = { \
 			"rx": dict(zip(["bytes", "packets", "errs", "drop", "fifo", "frame", "compressed", "multicast"], map(int, line.split()[1:8]))),
 			"tx": dict(zip(["bytes", "packets", "errs", "drop", "fifo", "colls", "carrier", "compressed"], map(int, line.split()[9:16])))}
 	else:
 		raise RuntimeError("interface statistics not found")
 
-	logger.debug(stats)
-	return stats
+	logger.debug(ret)
+	return ret
 
 
 
-def stats_diff(old, new, time):
+def stats_diff(old, new, timespan):
+	"""count vals per seconds in two vectors"""
 	keys = old.keys()
-	vals = [int((new[x] - old[x])/time) for x in keys]
+	vals = [int((new[x] - old[x])/timespan) for x in keys]
 	return dict(zip(keys, vals))
 
 
 
-def stats(iface, timespan, csv=False):
+def stats(iface, timespan):
+	"""grab stats from system"""
+
 	# grab stats in timespan
 	stats_rxtx_old = stats_rxtx_read(iface)
 	time.sleep(timespan)
@@ -126,6 +131,8 @@ def stats(iface, timespan, csv=False):
 
 
 def main():
+	"""main"""
+
 	# arguments
 	args = parse_arguments()
 	if args.debug:

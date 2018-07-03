@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+"""measure statistically processed netstat.py for command"""
 
 import argparse
 import logging
@@ -16,17 +17,19 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s
 
 
 def sizeof_fmt(num, suffix="B"):
-        """convert to human readable form"""
+	"""convert to human readable form"""
 
-        for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
-                if abs(num) < 1000.0:
-                        return "%3.1f %1s%s" % (num, unit, suffix)
-                num /= 1000.0
-        return "%.1f %1s%s" % (num, "Y", suffix)
+	for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+		if abs(num) < 1000.0:
+			return "%3.1f %1s%s" % (num, unit, suffix)
+		num /= 1000.0
+	return "%.1f %1s%s" % (num, "Y", suffix)
 
 
 
 def parse_arguments():
+	"""parse arguments"""
+
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--debug", action="store_true")
 
@@ -41,6 +44,8 @@ def parse_arguments():
 
 
 def main():
+	"""main"""
+
 	# args and startup
 	args = parse_arguments()
 	if args.debug:
@@ -100,8 +105,8 @@ def main():
 		" ", " ", " "]
 	fmt = "%-20s: mean= %10d, %10s ; median= %10d, %10s ; stddev= %10d, %10s"
 
-	for col in range(len(columns)):
-		values = data[:,col]
+	for col, _ in enumerate(columns):
+		values = data[:, col]
 		mean, median, stddev = numpy.mean(values), numpy.median(values), numpy.std(values)
 		print(fmt % ( \
 			columns[col],
