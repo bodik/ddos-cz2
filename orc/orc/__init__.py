@@ -174,7 +174,7 @@ class Slave(object):
 	def command_non(self, arguments):
 		"""start netstat thread"""
 
-		thread = ExecThread(self.communicator, ["/usr/bin/python3", "-u", "../tg/bin/netstat.py"] + arguments, "netstat")
+		thread = ExecThread(self.communicator, ["/usr/bin/python3", "-u", "../metalib/bin/netstat.py"] + arguments, "netstat")
 		thread.name = "netstat"
 		thread.start()
 

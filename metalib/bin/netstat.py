@@ -15,10 +15,11 @@ def parse_arguments():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--debug", action="store_true")
+	parser.add_argument("--iface", default="eth0", help="interface name")
 	parser.add_argument("--time", type=int, default=1, help="time period")
 	parser.add_argument("--single", action="store_true", help="print one statistic and exit")
 	parser.add_argument("--csv", action="store_true", help="print csv raw output")
-	parser.add_argument("--iface", default="eth0", help="interface name")
+	parser.add_argument("--noheader", action="store_true", help="do not print header")
 	return parser.parse_args()
 
 
@@ -85,7 +86,7 @@ def stats_rxtx_read(iface):
 
 def stats_diff(old, new, time):
 	keys = old.keys()
-	vals = [((new[x] - old[x])/time) for x in keys]
+	vals = [int((new[x] - old[x])/time) for x in keys]
 	return dict(zip(keys, vals))
 
 
@@ -115,32 +116,62 @@ def stats(iface, timespan, csv=False):
 	# generate output
 	## iface rx/tx bits, bytes, packets
 	## globalwide 4+6 tcp: opening active / passive | listen / established | closing active / passive
-	if csv:
-		ret = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" % ( \
-			8*diff["rx"]["bytes"], diff["rx"]["bytes"], diff["rx"]["packets"],
-			8*diff["tx"]["bytes"], diff["tx"]["bytes"], diff["tx"]["packets"],
-			tcp_open_active, tcp_open_passive, stats_tcp["TCP_LISTEN"], stats_tcp["TCP_ESTABLISHED"], tcp_close_active, tcp_close_passive)
-	else:
-		ret = "rx: %10s %10s %10s    tx: %10s %10s %10s    tcp: %4s/%4s | %4s/%4s | %4s/%4s" % ( \
-			sizeof_fmt(8*diff["rx"]["bytes"], "b"),	sizeof_fmt(diff["rx"]["bytes"], "B"), sizeof_fmt(diff["rx"]["packets"], "p"),
-			sizeof_fmt(8*diff["tx"]["bytes"], "b"),	sizeof_fmt(diff["tx"]["bytes"], "B"), sizeof_fmt(diff["tx"]["packets"], "p"),
-			tcp_open_active, tcp_open_passive, stats_tcp["TCP_LISTEN"], stats_tcp["TCP_ESTABLISHED"], tcp_close_active, tcp_close_passive)
-
-	return ret
+	return [ \
+		8*diff["rx"]["bytes"], diff["rx"]["bytes"], diff["rx"]["packets"],
+		8*diff["tx"]["bytes"], diff["tx"]["bytes"], diff["tx"]["packets"],
+		tcp_open_active, tcp_open_passive,
+		stats_tcp["TCP_LISTEN"], stats_tcp["TCP_ESTABLISHED"],
+		tcp_close_active, tcp_close_passive]
 
 
 
 def main():
+	# arguments
 	args = parse_arguments()
 	if args.debug:
 		logger.setLevel(logging.DEBUG)
 		sys.tracebacklimit = 0
 
+
+	# output format
+	if args.csv:
+		columns	= [ \
+			"rx_bits", "rx_bytes", "rx_packets",
+			"tx_bits", "tx_bytes", "tx_packets",
+			"tcp_open_active", "tcp_open_passive",
+			"tcp_listen", "tcp_established",
+			"tcp_close_active", "tcp_close_passive"]
+		outfmt = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s"
+		if not args.noheader:
+			print(outfmt % tuple(columns))
+
+	else:
+		columns = [ \
+			"bits", "bytes", "packets",
+			"bits", "bytes", "packets",
+			"open_active", "open_passive",
+			"listen", "esablished",
+			"close_active", "close_passive"]
+		outfmt = "rx: %10s %10s %10s    tx: %10s %10s %10s    tcp: %4s/%4s | %4s/%4s | %4s/%4s"
+		if not args.noheader:
+			print(outfmt % tuple(columns))
+
+	# main task
 	try:
+
 		while True:
-			print(stats(args.iface, args.time, args.csv))
+			data = stats(args.iface, args.time)
+			if not args.csv:
+				data[0] = sizeof_fmt(data[0], "b")
+				data[1] = sizeof_fmt(data[1], "B")
+				data[2] = sizeof_fmt(data[2], "p")
+				data[3] = sizeof_fmt(data[3], "b")
+				data[4] = sizeof_fmt(data[4], "B")
+				data[5] = sizeof_fmt(data[5], "p")
+			print(outfmt % tuple(data))
 	except KeyboardInterrupt:
 		pass
+
 
 
 if __name__ == "__main__":
