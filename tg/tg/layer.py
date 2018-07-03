@@ -36,6 +36,7 @@ class Ethernet(object):
 		fields["eth_source_mac"] = tg.utils.trafgen_format_mac(fields["eth_source_mac"])
 
 		if not fields["eth_destination_mac"]:
+			#TODO: ipv6 support, this automagically works as long as ipv6 gateway is exactly the same as ipv4
 			gwip = tg.utils.interface_gateway_ip(fields["dev"])
 			fields["eth_destination_mac"] = tg.utils.ip_to_mac(gwip, fields["dev"])
 		fields["eth_destination_mac"] = tg.utils.trafgen_format_mac(fields["eth_destination_mac"])

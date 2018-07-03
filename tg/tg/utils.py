@@ -78,9 +78,10 @@ def arping(ipaddr, iface_name):
 def ip_to_mac(ipaddr, iface_name):
 	"""resolves link addres from address"""
 
-	# TODO: ipv6 support
+	#TODO: ipv6 support
 	# ensure record in cache
 	arping(ipaddr, iface_name)
+	#TODO: wait is missing, automagically work since the management interface is typically the same as traffic generator's
 
 	# get record from cache
 	ipr = pyroute2.IPRoute()
