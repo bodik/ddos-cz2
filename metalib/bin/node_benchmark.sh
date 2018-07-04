@@ -5,7 +5,7 @@ BASE=$(dirname $(readlink -f $0))
 SYSBENCHLOG="/tmp/node_benchmark_sysbench.$$.log"
 
 echo "== NODE DESCRIPTION"
-python3 ${BASE}/node_describe.py
+python3 ${BASE}/node_describe.py $@
 
 echo "== NODE BENCHMARK"
 sh ${BASE}/node_sysbench.sh 1>${SYSBENCHLOG} 2>&1
