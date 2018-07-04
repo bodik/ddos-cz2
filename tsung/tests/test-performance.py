@@ -5,6 +5,8 @@ import subprocess
 import sys
 import shlex
 import time
+import re
+import datetime
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
@@ -18,6 +20,20 @@ def median(values):
 		return (values[(values_len-1)/2] + values[(values_len+1)/2]) / 2.0
 	else:
 		return values[(values_len-1)/2]
+
+def parse_time(data):
+        """parse time spec 1h2m3s to total seconds"""
+
+        regex = re.compile(r"^((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s?)?$")
+        parts = regex.match(data)
+        if not parts:
+                raise ValueError("invalid time")
+        parts = parts.groupdict()
+        time_params = {}
+        for (name, param) in parts.iteritems():
+                if param:
+                        time_params[name] = int(param)
+        return datetime.timedelta(**time_params).total_seconds()
 
 class PerformanceTest(object):
 
@@ -117,13 +133,18 @@ class PerformanceTest(object):
 			if self.repetition > 1 and i < self.repetition + 1:
 				time.sleep(self.delay)
 
+
+		timeout_sec = parse_time(self.timeout)
+		req_sec = median(results) / timeout_sec
+		min_sec = min(results) / timeout_sec
+		max_sec = min(results) / timeout_sec
+
 		if self.csv:
-			req_sec = median(results) / self.timeout
 			print "%s,%s,%s,%s,%s" % (req_sec, method, params['users'], params['cpu'])
 		else:
 			logger.info("RESULTS:")
 			logger.info("Values: %s", results)
-			logger.info("Median: %s, Min: %s, Max: %s", median(results), min(results), max(results))
+			logger.info("Median: %s, Min: %s, Max: %s", req_sec, min_sec, max_sec)
 			logger.info("")
 
 def main():
