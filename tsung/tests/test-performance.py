@@ -21,12 +21,11 @@ def median(values):
 
 class PerformanceTest(object):
 
-	TEST_DELAY = 10
 	NGINX_CLEAR_LOG = "rm %s/access.log; kill -USR1 `cat %s/nginx.pid`"
 	NGINX_GET_RESULTS = "cat %s/access.log | wc -l"
 	NGINX_RUN_TEST = "pgrep nginx > /dev/null; echo $?"
-	TSUNG_RUN = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir log --time 1m"
-	TSUNG_RUN_SSL = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir log --ssl --time 1m"
+	TSUNG_RUN = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --time %s"
+	TSUNG_RUN_SSL = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --ssl --time %s"
 
 	TESTBASE = [ \
 		{"cpu" :  5, "method" :  "GET", "ssl" : False, "users" :  "5000"},
@@ -46,8 +45,11 @@ class PerformanceTest(object):
 		self.process = None
 		self.target = fields['target']
 		self.port = fields['port']
+		self.timeout = fields['timeout']
 		self.remotelogs = fields['remotelogs']
 		self.repetition = fields['repeat']
+		self.delay = fields['delay']
+		self.csv = fields['csv']
 
 		if fields['list']:
 			self.list_tests()
@@ -76,23 +78,33 @@ class PerformanceTest(object):
 	def tsung_run(self, params):
 		cmd = ""
 		if params['ssl']:
-			cmd = self.TSUNG_RUN_SSL % (self.target, self.port, params['method'], params['users'], params['cpu'])
+			cmd = self.TSUNG_RUN_SSL % (self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
 		else:
-			cmd = self.TSUNG_RUN % (self.target, self.port, params['method'], params['users'], params['cpu'])
+			cmd = self.TSUNG_RUN % (self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
 		subprocess.call(shlex.split(cmd))
 
 	def list_tests(self):
 		print "Available testing cases:"
 		for i in xrange(0, len(self.TESTBASE)):
-			print "  %2d. %4s, %2sx CPU, %5s users" % (i + 1, self.TESTBASE[i]['method'], self.TESTBASE[i]['cpu'], self.TESTBASE[i]['users'])
+			if self.TESTBASE[i]['ssl']:
+				print "  %2d. %9s, %2sx CPU, %5s users" % (i + 1, self.TESTBASE[i]['method'] + "(ssl)", self.TESTBASE[i]['cpu'], self.TESTBASE[i]['users'])
+			else:
+				print "  %2d. %9s, %2sx CPU, %5s users" % (i + 1, self.TESTBASE[i]['method'], self.TESTBASE[i]['cpu'], self.TESTBASE[i]['users'])
+
+	def ssl_tests(self):
+		return [test for test in self.TESTBASE if test['ssl']]
+
+	def plain_tests(self):
+		return [test for test in self.TESTBASE if not test['ssl']]
 
 	def run(self, params):
 		results = []
 
+		method = params['method']
 		if params['ssl']:
-			logger.info("Starting test (%s(ssl), %sxCPU, %s users)", params['method'], params['cpu'], params['users'])
-		else:
-			logger.info("Starting test (%s, %sxCPU, %s users)", params['method'], params['cpu'], params['users'])
+			method  += "(ssl)"
+
+		logger.info("Starting test (%s, %sxCPU, %s users)", method, params['cpu'], params['users'])
 
 		for i in xrange(1, self.repetition + 1):
 			logger.debug(" %d. Clear remote log", i)
@@ -102,23 +114,29 @@ class PerformanceTest(object):
 			logger.debug(" %d. Get remote results", i)
 			results.append(self.nginx_get_results())
 
-			if self.repetition > 1:
-				time.sleep(self.TEST_DELAY)
+			if self.repetition > 1 and i < self.repetition + 1:
+				time.sleep(self.delay)
 
-		logger.info("RESULTS:")
-		logger.info("Values: %s", results)
-		logger.info("Median: %s, Min: %s, Max: %s", median(results), min(results), max(results))
-		logger.info("")
+		if self.csv:
+			req_sec = median(results) / self.timeout
+			print "%s,%s,%s,%s,%s" % (req_sec, method, params['users'], params['cpu'])
+		else:
+			logger.info("RESULTS:")
+			logger.info("Values: %s", results)
+			logger.info("Median: %s, Min: %s, Max: %s", median(results), min(results), max(results))
+			logger.info("")
 
 def main():
 	"""main"""
 	parser = argparse.ArgumentParser()
 	parser.add_argument("target", help="destination ip or hostname")
 	parser.add_argument("--port", type=int, default=44444, help="path to remote webserver log files")
+	parser.add_argument("--timeout", "-t", default="2m", help="test timeout")
 	parser.add_argument("--remotelogs", default="/usr/local/nginx/logs", help="path to remote webserver log files")
 	parser.add_argument("--repeat", "-r", type=int, default=1, help="number of repetition")
-	parser.add_argument("--logfile", "-l", default="results.log", help="file with results")
-	parser.add_argument("--test", help="commna separated tests; show numbers with --list directive")
+	parser.add_argument("--delay", "-d", type=int, default=20, help="Delay between each test")
+	parser.add_argument("--csv", action="store_true", default=False, help="results in csv format")
+	parser.add_argument("--test", help="'plain' / 'ssl' or commna separated tests; show numbers with --list directive")
 	parser.add_argument("--list", action="store_true", default=False, help="list available testcases")
 	parser.add_argument("--debug", action="store_true", default=False, help="set logging level to debug")
 
@@ -130,15 +148,19 @@ def main():
 
 	testcases = []
 	if args['test']:
-		for i in args['test'].split(','):
-			testcases.append(PerformanceTest.TESTBASE[int(i)-1])
+		if args['test'] == 'ssl':
+			testcases = perftest.ssl_tests()
+		elif args['test'] == 'plain':
+			testcases = perftest.plain_tests()
+		else:
+			for i in args['test'].split(','):
+				testcases.append(PerformanceTest.TESTBASE[int(i)-1])
 	else:
-		testcases = PerformanceTest.TESTBASE
+		testcases = perftest.plain_tests()
 
 	if perftest.nginx_alive():
 		for params in testcases:
 			perftest.run(params)
-			time.sleep(PerformanceTest.TEST_DELAY)
 	else:
 		logger.info("Remote server or nginx down, exiting")
 		sys.exit(1)
