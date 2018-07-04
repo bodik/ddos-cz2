@@ -51,18 +51,18 @@ monitoring/testing overloading tcp based applications such as webservers.
 
 During perftesting, mind that there might be a difference between TX traffic
 size on the sender from RX traffic size on receiver due to ethernet padding in
-case of short packages.
+case of short packets.
 
 ```
 sender:
 23:24:57.941105 IP aa.bbb.ccc.dd.49518 > aa.bbb.ccc.ee.12345: UDP, length 1
-	0x0000:  4500 001d 5772 4000 4011 9047 4e80 db0a  E...Wr@.@..GN...
-	0x0010:  4e80 db0b c16e 3039 0009 5331 00         N....n09..S1.
+	0x0000:  4500 001d 5772 4000 4011 9047 AABB CCDD  E...Wr@.@..GN...
+	0x0010:  AABB CCEE c16e 3039 0009 5331 00         N....n09..S1.
 
 receiver:
 23:24:57.940936 IP aa.bbb.ccc.dd.49518 > aa.bbb.ccc.ee.12345: UDP, length 1
-	0x0000:  4500 001d 5772 4000 4011 9047 4e80 db0a  E...Wr@.@..GN...
-	0x0010:  4e80 db0b c16e 3039 0009 bb1d 0000 0000  N....n09........
+	0x0000:  4500 001d 5772 4000 4011 9047 AABB CCDD  E...Wr@.@..GN...
+	0x0010:  AABB CCEE c16e 3039 0009 bb1d 0000 0000  N....n09........
 	0x0020:  0000 0000 0000 0000 0000 0000 0000       ..............
 ```
 
