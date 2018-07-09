@@ -7,33 +7,24 @@ import shlex
 import time
 import re
 import datetime
+import numpy
 
 logger = logging.getLogger()
-logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
-
-def median(values):
-	values = sorted(values)
-	values_len = len(values)
-	if values_len < 1:
-		return None
-	if values_len % 2 == 0:
-		return (values[(values_len-1)/2] + values[(values_len+1)/2]) / 2.0
-	else:
-		return values[(values_len-1)/2]
 
 def parse_time(data):
-        """parse time spec 1h2m3s to total seconds"""
+	"""parse time spec 1h2m3s to total seconds"""
 
-        regex = re.compile(r"^((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s?)?$")
-        parts = regex.match(data)
-        if not parts:
-                raise ValueError("invalid time")
-        parts = parts.groupdict()
-        time_params = {}
-        for (name, param) in parts.iteritems():
-                if param:
-                        time_params[name] = int(param)
-        return datetime.timedelta(**time_params).total_seconds()
+	regex = re.compile(r"^((?P<hours>\d+?)h)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s?)?$")
+	parts = regex.match(data)
+	if not parts:
+		raise ValueError("invalid time")
+	parts = parts.groupdict()
+	time_params = {}
+	for (name, param) in parts.iteritems():
+		if param:
+			time_params[name] = int(param)
+
+	return datetime.timedelta(**time_params).total_seconds()
 
 class PerformanceTest(object):
 
@@ -44,12 +35,12 @@ class PerformanceTest(object):
 	TSUNG_RUN_SSL = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --ssl --time %s"
 
 	TESTBASE = [ \
-		{"cpu" :  5, "method" :  "GET", "ssl" : False, "users" :  "5000"},
-		{"cpu" : 10, "method" :  "GET", "ssl" : False, "users" : "10000"},
-		{"cpu" : 20, "method" :  "GET", "ssl" : False, "users" : "15000"},
-		{"cpu" :  5, "method" :  "GET", "ssl" : True,  "users" :  "5000"},
-		{"cpu" : 10, "method" :  "GET", "ssl" : True,  "users" : "10000"},
-		{"cpu" : 20, "method" :  "GET", "ssl" : True,  "users" : "15000"},
+		{"cpu" :  5, "method" : "GET", "ssl" : False, "users" :  "5000"},
+		{"cpu" : 10, "method" : "GET", "ssl" : False, "users" : "10000"},
+		{"cpu" : 20, "method" : "GET", "ssl" : False, "users" : "15000"},
+		{"cpu" :  5, "method" : "GET", "ssl" : True,  "users" :  "5000"},
+		{"cpu" : 10, "method" : "GET", "ssl" : True,  "users" : "10000"},
+		{"cpu" : 20, "method" : "GET", "ssl" : True,  "users" : "15000"},
 		{"cpu" :  5, "method" : "POST", "ssl" : False, "users" :  "5000"},
 		{"cpu" : 10, "method" : "POST", "ssl" : False, "users" : "10000"},
 		{"cpu" : 20, "method" : "POST", "ssl" : False, "users" : "15000"},
@@ -118,7 +109,7 @@ class PerformanceTest(object):
 
 		method = params['method']
 		if params['ssl']:
-			method  += "(ssl)"
+			method += "(ssl)"
 
 		logger.info("Starting test (%s, %sxCPU, %s users)", method, params['cpu'], params['users'])
 
@@ -135,17 +126,20 @@ class PerformanceTest(object):
 
 
 		timeout_sec = parse_time(self.timeout)
-		req_sec = median(results) / timeout_sec
-		min_sec = min(results) / timeout_sec
-		max_sec = min(results) / timeout_sec
+		results_persec = [val / timeout_sec for val in results]
+
+		median_sec = numpy.median(results_persec)
+		min_sec = min(results_persec)
+		max_sec = max(results_persec)
+		mean_sec = numpy.mean(results_persec)
+		std_sec = numpy.std(results_persec)
 
 		if self.csv:
-			print "%s,%s,%s,%s,%s" % (req_sec, method, params['users'], params['cpu'])
+			print "%s,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f" % \
+				(method, params['users'], params['cpu'], median_sec, min_sec, max_sec, mean_sec, std_sec)
 		else:
 			logger.info("RESULTS:")
-			logger.info("Values: %s", results)
-			logger.info("Median: %s, Min: %s, Max: %s", req_sec, min_sec, max_sec)
-			logger.info("")
+			logger.info("Median %.2f, Min: %.2f, Max: %.2f, Mean: %.2f, Stddev: %.2f", median_sec, min_sec, max_sec, mean_sec, std_sec)
 
 def main():
 	"""main"""
@@ -154,6 +148,7 @@ def main():
 	parser.add_argument("--port", type=int, default=44444, help="path to remote webserver log files")
 	parser.add_argument("--timeout", "-t", default="2m", help="test timeout")
 	parser.add_argument("--remotelogs", default="/usr/local/nginx/logs", help="path to remote webserver log files")
+	parser.add_argument("--logfile", help="local logfile name")
 	parser.add_argument("--repeat", "-r", type=int, default=1, help="number of repetition")
 	parser.add_argument("--delay", "-d", type=int, default=20, help="Delay between each test")
 	parser.add_argument("--csv", action="store_true", default=False, help="results in csv format")
@@ -163,6 +158,11 @@ def main():
 
 	args = vars(parser.parse_args())
 	perftest = PerformanceTest(args)
+
+	if args['logfile']:
+		logging.basicConfig(level=logging.INFO, filename=args['logfile'], format='%(levelname)s %(message)s')
+	else:
+		logging.basicConfig(level=logging.INFO, stream=sys.stdout, format='%(levelname)s %(message)s')
 
 	if args['debug']:
 		logger.setLevel(logging.DEBUG)
@@ -180,6 +180,11 @@ def main():
 		testcases = perftest.plain_tests()
 
 	if perftest.nginx_alive():
+		if args['csv']:
+			logger.disabled = True
+			print "### csv data"
+			print "\"Method\",\"Users\",\"CPU [cores]\",\"Requests [req/s]\",\"Min [req/s]\"," \
+								"\"Max [req/s]\",\"Mean [req/s]\",\"Std dev [req/s]\""
 		for params in testcases:
 			perftest.run(params)
 	else:
