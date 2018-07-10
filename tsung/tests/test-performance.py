@@ -146,6 +146,7 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("target", help="destination ip or hostname")
 	parser.add_argument("--port", type=int, default=44444, help="path to remote webserver log files")
+	parser.add_argument("--ssl", action="store_true", default=False, help="connection over ssl")
 	parser.add_argument("--timeout", "-t", default="2m", help="test timeout")
 	parser.add_argument("--remotelogs", default="/usr/local/nginx/logs", help="path to remote webserver log files")
 	parser.add_argument("--logfile", help="local logfile name")
