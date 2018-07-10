@@ -17,7 +17,7 @@ def check_range(arg, minval, maxval):
 	ivalue = int(arg)
 	imin = int(minval)
 	imax   = int(maxval)
-	if ivalue <= imin or ivalue > imax:
+	if ivalue < imin or ivalue > imax:
 		raise argparse.ArgumentTypeError("%s is not in range %s - %s" % (ivalue, imin, imax))
 	return ivalue
 

@@ -31,8 +31,8 @@ class PerformanceTest(object):
 	NGINX_CLEAR_LOG = "rm %s/access.log; kill -USR1 `cat %s/nginx.pid`"
 	NGINX_GET_RESULTS = "cat %s/access.log | wc -l"
 	NGINX_RUN_TEST = "pgrep nginx > /dev/null; echo $?"
-	TSUNG_RUN = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --time %s"
-	TSUNG_RUN_SSL = "/opt/ddos-cz2/tsung/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --ssl --time %s"
+	TSUNG_RUN = "%s/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --time %s"
+	TSUNG_RUN_SSL = "%s/pytsung %s --port %s --clients localhost -m %s --users %s --r 100000 --cpu %s --logdir /tmp/log --ssl --time %s"
 
 	TESTBASE = [ \
 		{"cpu" :  5, "method" : "GET", "ssl" : False, "users" :  "5000"},
@@ -57,6 +57,7 @@ class PerformanceTest(object):
 		self.repetition = fields['repeat']
 		self.delay = fields['delay']
 		self.csv = fields['csv']
+		self.pytsungpath = fields['pytsungpath']
 
 		if fields['list']:
 			self.list_tests()
@@ -85,9 +86,9 @@ class PerformanceTest(object):
 	def tsung_run(self, params):
 		cmd = ""
 		if params['ssl']:
-			cmd = self.TSUNG_RUN_SSL % (self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
+			cmd = self.TSUNG_RUN_SSL % (self.pytsungpath, self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
 		else:
-			cmd = self.TSUNG_RUN % (self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
+			cmd = self.TSUNG_RUN % (self.pytsungpath, self.target, self.port, params['method'], params['users'], params['cpu'], self.timeout)
 		subprocess.call(shlex.split(cmd))
 
 	def list_tests(self):
@@ -156,6 +157,7 @@ def main():
 	parser.add_argument("--test", help="'plain' / 'ssl' or commna separated tests; show numbers with --list directive")
 	parser.add_argument("--list", action="store_true", default=False, help="list available testcases")
 	parser.add_argument("--debug", action="store_true", default=False, help="set logging level to debug")
+	parser.add_argument("--pytsungpath", default="/opt/ddos-cz2/tsung", help="path to pytsung")
 
 	args = vars(parser.parse_args())
 	perftest = PerformanceTest(args)
