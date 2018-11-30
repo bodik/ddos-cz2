@@ -39,7 +39,9 @@
     <!-- full url with server name, this overrides the "server" config value -->
         <for from="1" to="__TSUNG_requests" var="i">
                 <request subst="true">
-                        <http url='__TSUNG_uri' version='1.1' content_type='application/x-www-form-urlencoded' method='__TSUNG_method' contents='__TSUNG_content'></http>
+                        <http url='__TSUNG_uri' version='1.1' content_type='application/x-www-form-urlencoded' method='__TSUNG_method' contents='__TSUNG_content'>
+			__TSUNG_cookies
+			</http>
                 </request>
         </for>
   </session>

@@ -8,10 +8,10 @@ import subprocess
 import sys
 import tempfile
 import threading
-import tsung
 import time
 import string
 import cgi
+import tsung
 
 class TsungTemplate(string.Template):
 	delimiter = '__TSUNG_'
@@ -60,6 +60,17 @@ class Runner(object):
 		else:
 			content = cgi.escape(self.fields['content'])
 
+		cookies = ""
+		if self.fields['cookies']:
+			for cookie in self.fields['cookies'].split("; "):
+				try:
+					(key, value) = cookie.split("=")
+					cookies += "<add_cookie key=\"%s\" value=\"%s\"/>\n" % (key, value)
+				except ValueError:
+					print "ERROR: Cookies not correctly specified, fix them or remove --cookies option."
+					sys.exit(1)
+
+
 		uri = self.fields['uri']
 		if not self.fields['uri'].startswith("/"):
 			uri = "/%s" % (self.fields['uri'])
@@ -78,7 +89,8 @@ class Runner(object):
 				'requests': self.fields['requests'],
 				'uri': uri,
 				'method'  : self.fields['method'],
-				'content' : content}
+				'content' : content,
+				'cookies' : cookies}
 
 			res = template.safe_substitute(values)
 

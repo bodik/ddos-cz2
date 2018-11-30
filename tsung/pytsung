@@ -39,6 +39,7 @@ def parse_arguments():
     parser.add_argument("--ssl", action="store_true", default=False, help="use secure connection")
     parser.add_argument("--clients", default="localhost", help="source ip or hosts comma-separated")
     parser.add_argument("--content", default="", help="request content; use file:// for load content from file")
+    parser.add_argument("--cookies", default="", help="custom cookies in request")
 
     # performance arguments
     parser.add_argument("--users", "-u", default=1000, type=check_users, metavar='{1-70000}' ,help="concurent users")
