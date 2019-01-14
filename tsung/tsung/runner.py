@@ -80,6 +80,7 @@ class Runner(object):
 			data = temp_file.read()
 			template = TsungTemplate(data)
 			values = { \
+				'logtraffic': self.fields['logtraffic'],
 				'host': self.fields['host'],
 				'port': self.fields['port'],
 				'clients' : clients,

@@ -50,6 +50,7 @@ def parse_arguments():
 
     # generic arguments
     parser.add_argument("--debug", action="store_true", default=False, help="debug output")
+    parser.add_argument("--logtraffic", default="false", choices=["true", "false", "light", "protocol", "protocol_local"], help="tsung traffic dump")
     parser.add_argument("--dump", action="store_true", default=False, help="dump generator config")
     parser.add_argument("--dev", help="output iface; defaults to iface with default gw; eg. eth0")
 

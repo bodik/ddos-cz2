@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!DOCTYPE tsung SYSTEM "/opt/tsung/share/tsung/tsung-1.0.dtd">
-<tsung loglevel="notice" version="1.0">
+<tsung loglevel="notice" dumptraffic="__TSUNG_logtraffic" version="1.0">
 
   <!-- Client side setup -->
   <clients>
