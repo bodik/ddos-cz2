@@ -28,7 +28,7 @@ def parse_arguments():
 def sizeof_fmt(num, suffix="B"):
 	"""convert to human readable form"""
 
-	for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+	for unit in [" ", "k", "M", "G", "T", "P", "E", "Z"]:
 		if abs(num) < 1000.0:
 			return "%3.1f %1s%s" % (num, unit, suffix)
 		num /= 1000.0
