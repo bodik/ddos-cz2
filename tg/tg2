@@ -21,7 +21,10 @@ def parse_arguments():
 	for cls in tg.modreg.registered_classes:
 		tg.runner.Runner.build_arguments_parser(parser_command.add_parser(cls.__name__), cls)
 
-	return parser.parse_args()
+	args = parser.parse_args()
+	if (not args.time) and (not args.num):
+		parser.error("Either --time or --num is required.")
+	return args
 
 
 
