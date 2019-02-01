@@ -33,11 +33,11 @@ class RawConfig(object):
 
 #====================================================================
 @tg.modreg.register
-class UdpRandomPayload(object):
-	"""generator impl - udp random payload"""
+class UdpStaticPayload(object):
+	"""generator impl - udp static payload"""
 
 	TEMPLATE = """
-/* payload */				drnd({length}),
+/* payload */                           fill(0x41, {length})
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
 
@@ -65,11 +65,12 @@ class UdpRandomPayload(object):
 
 
 #====================================================================
-#TODO: might consider refactoring to static version being base class
 @tg.modreg.register
-class UdpStaticPayload(UdpRandomPayload):
+class UdpRandomPayload(UdpStaticPayload):
+	"""generator impl - udp random payload"""
+
 	TEMPLATE = """
-/* payload */                           fill(0x41, {length})
+/* payload */				drnd({length}),
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
 
