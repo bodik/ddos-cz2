@@ -5,7 +5,7 @@ import tg
 
 #====================================================================
 @tg.modreg.register
-class RawConfig(object):
+class RawConfig():
 	"""generator impl - raw config generator"""
 
 	TEMPLATE = """
@@ -33,7 +33,7 @@ class RawConfig(object):
 
 #====================================================================
 @tg.modreg.register
-class UdpStaticPayload(object):
+class UdpStaticPayload():
 	"""generator impl - udp static payload"""
 
 	TEMPLATE = """
@@ -78,7 +78,7 @@ class UdpRandomPayload(UdpStaticPayload):
 
 #====================================================================
 @tg.modreg.register
-class Udp6RandomPayload(object):
+class Udp6RandomPayload():
 	"""generator impl - udp random payload over ipv6"""
 
 	TEMPLATE = """
@@ -111,7 +111,7 @@ class Udp6RandomPayload(object):
 
 #====================================================================
 @tg.modreg.register
-class TcpHeader(object):
+class TcpHeader():
 	"""generator impl - tcp header"""
 
 	TEMPLATE = ""
@@ -136,7 +136,7 @@ class TcpHeader(object):
 
 #====================================================================
 @tg.modreg.register
-class Tcp6Header(object):
+class Tcp6Header():
 	"""generator impl - tcp header over ipv6"""
 
 	TEMPLATE = ""
@@ -161,7 +161,7 @@ class Tcp6Header(object):
 
 #====================================================================
 @tg.modreg.register
-class IcmpEcho(object):
+class IcmpEcho():
 	"""generator impl - icmp echo"""
 
 	TEMPLATE = """
@@ -200,7 +200,7 @@ class IcmpEcho(object):
 
 #====================================================================
 @tg.modreg.register
-class Icmp6Echo(object):
+class Icmp6Echo():
 	"""generator impl - icmp6 echo"""
 
 	TEMPLATE = """

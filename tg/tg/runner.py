@@ -12,7 +12,7 @@ import time
 
 
 
-class Runner(object):
+class Runner():
 	"""executor holds code to execute the generator"""
 
 	HEADER = """
