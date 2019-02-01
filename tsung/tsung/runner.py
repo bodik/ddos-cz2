@@ -71,9 +71,9 @@ class Runner(object):
 					sys.exit(1)
 
 
-		uri = self.fields['uri']
-		if not self.fields['uri'].startswith("/"):
-			uri = "/%s" % (self.fields['uri'])
+		uri = cgi.escape(self.fields['uri'])
+		if not uri.startswith("/"):
+			uri = "/%s" % (uri)
 
 		res = ""
 		with open(self.fields['template'], 'r') as temp_file:
