@@ -66,6 +66,16 @@ class UdpRandomPayload(object):
 
 #====================================================================
 @tg.modreg.register
+class UdpStaticPayload(UdpRandomPayload):
+	TEMPLATE = """
+/* payload */                           fill(0x41, {length})
+"""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
+
+
+
+#====================================================================
+@tg.modreg.register
 class Udp6RandomPayload(object):
 	"""generator impl - udp random payload over ipv6"""
 
