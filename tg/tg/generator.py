@@ -5,7 +5,7 @@ import tg
 
 #====================================================================
 @tg.modreg.register
-class RawConfig(object):
+class RawConfig():
 	"""generator impl - raw config generator"""
 
 	TEMPLATE = """
@@ -33,11 +33,11 @@ class RawConfig(object):
 
 #====================================================================
 @tg.modreg.register
-class UdpRandomPayload(object):
-	"""generator impl - udp random payload"""
+class UdpStaticPayload():
+	"""generator impl - udp static payload"""
 
 	TEMPLATE = """
-/* payload */				drnd({length}),
+/* payload */                           fill(0x41, {length})
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
 
@@ -66,9 +66,11 @@ class UdpRandomPayload(object):
 
 #====================================================================
 @tg.modreg.register
-class UdpStaticPayload(UdpRandomPayload):
+class UdpRandomPayload(UdpStaticPayload):
+	"""generator impl - udp random payload"""
+
 	TEMPLATE = """
-/* payload */                           fill(0x41, {length})
+/* payload */				drnd({length}),
 """
 	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
 
@@ -76,7 +78,7 @@ class UdpStaticPayload(UdpRandomPayload):
 
 #====================================================================
 @tg.modreg.register
-class Udp6RandomPayload(object):
+class Udp6RandomPayload():
 	"""generator impl - udp random payload over ipv6"""
 
 	TEMPLATE = """
@@ -109,7 +111,7 @@ class Udp6RandomPayload(object):
 
 #====================================================================
 @tg.modreg.register
-class TcpHeader(object):
+class TcpHeader():
 	"""generator impl - tcp header"""
 
 	TEMPLATE = ""
@@ -134,7 +136,7 @@ class TcpHeader(object):
 
 #====================================================================
 @tg.modreg.register
-class Tcp6Header(object):
+class Tcp6Header():
 	"""generator impl - tcp header over ipv6"""
 
 	TEMPLATE = ""
@@ -159,7 +161,7 @@ class Tcp6Header(object):
 
 #====================================================================
 @tg.modreg.register
-class IcmpEcho(object):
+class IcmpEcho():
 	"""generator impl - icmp echo"""
 
 	TEMPLATE = """
@@ -198,7 +200,7 @@ class IcmpEcho(object):
 
 #====================================================================
 @tg.modreg.register
-class Icmp6Echo(object):
+class Icmp6Echo():
 	"""generator impl - icmp6 echo"""
 
 	TEMPLATE = """
@@ -221,4 +223,75 @@ class Icmp6Echo(object):
 		fields["eth_protocol"] = "0x86dd"
 		fields["ip6_next_header"] = 58
 		fields["ip6_payload_length"] = tg.layer.Icmp6Echo.HEADER_LENGTH + len(fields["icmp6echo_data"])
+		return fields
+
+
+
+#====================================================================
+@tg.modreg.register
+class DnsQueryUdpPayload(UdpStaticPayload):
+	"""generator impl - dns query udp payload"""
+
+	TEMPLATE = """
+/* dns txid */				drnd(2),
+/* dns flags */				0x01, 0x00,
+
+/* dns number of questions */		c16(1),
+/* dns answer rr */			c16(0),
+/* dns auth rr */			c16(0),
+/* dns add rr */			c16({dns_additional_records}),
+
+/* dns query encoded data */		{dns_query_data}
+/* dns query type (any) */		0x00, {dns_query_type},
+/* dns query class (in) */		c16(1),
+
+/* dns additional records */		{dns_additional_records_data}
+"""
+	LAYERS = ["{{", tg.layer.Ethernet, tg.layer.Ip4, tg.layer.Udp, TEMPLATE, "}}"]
+
+
+	@staticmethod
+	def parse_arguments(parser):
+		"""parse arguments"""
+
+		parser.add_argument("--dns_query_name", default="test", help="name to query; eg. domain.ex")
+		parser.add_argument("--dns_query_type", default="any", help="query type; eg. any, txt, ...")
+		parser.add_argument("--dns_nolarge", action="store_true", help="request large answer")
+
+
+	@staticmethod
+	def process_fields(fields):
+		"""process arguments to fileds"""
+
+		def process_dns_query_type(fields, selector):
+			"""validate field"""
+
+			if fields[selector] == 'any':
+				fields["dns_query_type"] = "0xff"
+			elif fields[selector] == 'txt':
+				fields["dns_query_type"] = "0x10"
+			else:
+				raise ValueError("invalid dns query type")
+			return fields
+
+		fields["udp_destination_port"] = 'c16(53)'
+		fields = process_dns_query_type(fields, "dns_query_type")
+		fields["length"] = 16
+
+		fields["dns_query_data"] = []
+		for part in fields["dns_query_name"].split('.'):
+			fields["length"] += 1+len(part)
+			fields["dns_query_data"] += [str(len(part)), '"%s"'%part]
+		fields["length"] += 1
+		fields["dns_query_data"].append('0x00')
+		fields["dns_query_data"] = ",".join(fields["dns_query_data"])
+
+		fields["dns_additional_records"] = 0
+		fields["dns_additional_records_data"] = ""
+		if not fields["dns_nolarge"]:
+			fields["dns_additional_records"] = 1
+			fields["dns_additional_records_data"] = "0x00, 0x00, 0x29, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00"
+			fields["length"] += 11
+
+		fields = super(DnsQueryUdpPayload, DnsQueryUdpPayload).process_fields(fields)
 		return fields

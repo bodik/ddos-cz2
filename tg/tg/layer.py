@@ -6,7 +6,7 @@ import tg
 
 
 #====================================================================
-class Ethernet(object):
+class Ethernet():
 	"""layer ethernet impl"""
 
 	HEADER_LENGTH = 14
@@ -46,7 +46,7 @@ class Ethernet(object):
 
 
 #====================================================================
-class Ip4(object):
+class Ip4():
 	"""layer ip4 impl"""
 
 	HEADER_LENGTH = 20
@@ -95,8 +95,7 @@ class Ip4(object):
 
 
 #====================================================================
-
-class Ip6(object):
+class Ip6():
 	"""layer ip6 impl"""
 
 	HEADER_LENGTH = 40
@@ -156,7 +155,7 @@ class Ip6(object):
 
 
 #====================================================================
-class Udp(object):
+class Udp():
 	"""layer udp"""
 
 	HEADER_LENGTH = 8
@@ -196,7 +195,7 @@ class Udp(object):
 
 
 #====================================================================
-class Tcp(object):
+class Tcp():
 	"""layer tcp"""
 
 	HEADER_LENGTH = 20
@@ -266,7 +265,7 @@ class Tcp(object):
 
 
 #====================================================================
-class IcmpEcho(object):
+class IcmpEcho():
 	"""simplified icmp+echo message"""
 
 	HEADER_LENGTH = 8
@@ -306,7 +305,7 @@ class IcmpEcho(object):
 
 
 #====================================================================
-class Icmp6Echo(object):
+class Icmp6Echo():
 	"""simplified icmp6+echo message"""
 
 	HEADER_LENGTH = 8
