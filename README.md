@@ -47,3 +47,28 @@ net.ipv4.conf.all.rp_filter = 2
 net.ipv4.conf.dev1.rp_filter = 2
 net.ipv4.conf.dev2.rp_filter = 2
 ```
+
+* tsung's ipcontroll.sh
+
+```
+#!/bin/sh
+
+ACTION=$1
+IF=dev1
+NET=netx
+
+if [ "$ACTION" = "add" ]; then
+	# split addresses between generators (1: 20-x, 2: x-250)
+        for i in `seq 150 250`; do
+                ip addr add $NET.$i/24 dev $IF1 label $IF1:$i
+		ip rule add from $NET.$i table rt1
+        done
+fi
+
+if [ "$ACTION" = "del" ]; then
+        for i in `seq 150 250`; do
+                ip addr del $NET.$i/24 dev $IF1 label $IF1:$i
+		ip rule del from $NET.$i table rt1
+        done
+fi
+```
