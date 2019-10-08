@@ -88,3 +88,15 @@ release the Ether without realising that a collision has occurred.
 
 Thats why it is/has a minimum of 64 Bytes.
 ```
+
+### On parameters
+
+Keep in mind that rnd/drnd semantic changed from ddos-cz to ddos-cz2
+
+* `rnd` means single random value which is static during one execution
+* `drnd` means dynamic value changing for every generated packet
+
+When executed without `--rate`, trafgen spawns one child per CPU which might
+result in overall slower output that with single process generation. More test
+on the topic is required, most probably there are cases where multiple process
+generation would gain performance (eg. heavily randomized fields ??).
