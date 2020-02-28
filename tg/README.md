@@ -100,3 +100,39 @@ When executed without `--rate`, trafgen spawns one child per CPU which might
 result in overall slower output that with single process generation. More test
 on the topic is required, most probably there are cases where multiple process
 generation would gain performance (eg. heavily randomized fields ??).
+
+
+### Examples
+
+```
+# start orc server and slaves
+# start traffic monitoring
+(orc) > noff
+(orc) > non --iface enp4s0f1
+
+
+# udp packet flood
+tg/tg2 UdpStaticPayload --ip4_source_address rnd --ip4_destination_address XXX --udp_source_port rnd --udp_destination_port rnd --rate 100pps --length 100 --time 30
+tg/tg2 UdpStaticPayload --ip4_source_address rnd --ip4_destination_address XXX --udp_source_port rnd --udp_destination_port rnd --rate 1000000pps --length 100 --time 30
+
+tg/tg2 UdpStaticPayload --ip4_source_address drnd --ip4_destination_address XXX --udp_source_port drnd --udp_destination_port rnd --rate 100pps --length 100 --time 30
+tg/tg2 UdpStaticPayload --ip4_source_address drnd --ip4_destination_address XXX --udp_source_port drnd --udp_destination_port rnd --rate 1000000pps --length 100 --time 30
+
+
+# udp data flood
+tg/tg2 UdpStaticPayload --ip4_source_address rnd --ip4_destination_address XXX --udp_source_port rnd --udp_destination_port rnd --rate 100pps --length 1400 --time 30
+tg/tg2 UdpStaticPayload --ip4_source_address rnd --ip4_destination_address XXX --udp_source_port rnd --udp_destination_port rnd --rate 1000000pps --length 1400 --time 30
+
+tg/tg2 UdpStaticPayload --ip4_source_address drnd --ip4_destination_address XXX --udp_source_port drnd --udp_destination_port rnd --rate 100pps --length 1400 --time 30
+tg/tg2 UdpStaticPayload --ip4_source_address drnd --ip4_destination_address XXX --udp_source_port drnd --udp_destination_port rnd --rate 1000000pps --length 1400 --time 30
+
+
+# tcp synflood
+tg/tg2 TcpHeader --ip4_source_address drnd --ip4_destination_address XXX --tcp_source_port drnd --tcp_destination_port 443 --rate 1000pps --time 30
+tg/tg2 TcpHeader --ip4_source_address drnd --ip4_destination_address XXX --tcp_source_port drnd --tcp_destination_port 443 --rate 1000000pps --time 30
+
+
+# dns query flood 
+
+tg/tg2 DnsQueryUdpPayload --ip4_source_address drnd --ip4_destination_address XXX --dns_query_name XXX --dns_query_type any --rate 1000pps --time 30
+```
